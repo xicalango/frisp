@@ -136,6 +136,20 @@ impl Variable for Mul {
     }
 }
 
+pub struct Add;
+
+impl Variable for Add {
+    fn eval(&self, args: Vec<Value>) -> Value {
+        match (&args[0], &args[1]) {
+            (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 + v2),
+            (Value::Integer(v1), Value::Float(v2)) => Value::Float(*v1 as f64 + v2),
+            (Value::Float(v1), Value::Integer(v2)) => Value::Float(v1 + *v2 as f64),
+            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 + v2),
+            _ => panic!()
+        }
+    }
+}
+
 pub struct Begin;
 
 impl Variable for Begin {
@@ -148,6 +162,17 @@ impl Variable for Begin {
     }
 }
 
+pub struct DebugPrint;
+
+impl Variable for DebugPrint {
+    fn eval(&self, args: Vec<Value>) -> Value {
+        for (i, arg) in args.iter().enumerate() {
+            println!("{i}: {arg:?}");
+        }
+        Value::Unit
+    }
+}
+
 
 pub struct Environment {
     env: HashMap<String, Box<dyn Variable>>,
@@ -156,9 +181,11 @@ pub struct Environment {
 impl Default for Environment {
     fn default() -> Self {
         let mut env: HashMap<String, Box<dyn Variable>> = HashMap::new();
+        env.insert("add".to_owned(), Box::new(Mul));
         env.insert("mul".to_owned(), Box::new(Mul));
         env.insert("begin".to_owned(), Box::new(Begin));
         env.insert("pi".to_owned(), Box::new(ConstVal(Value::Float(std::f64::consts::PI))));
+        env.insert("debug".to_owned(), Box::new(DebugPrint));
         Self { env }
     }
 }
@@ -211,12 +238,12 @@ impl AstNode {
                 }
             },
             AstNode::Symbol(s) => {
-                println!("suymboling {s:?}");
+                println!("Symboling {s:?}");
                 let var = env.env.get(&s).ok_or(Error::EvalError(format!("invalid symbol: {s:?}")))?;
                 Ok(var.eval(Vec::new()))
             },
             AstNode::Value(v) => {
-                println!("valuing {v:?}");
+                println!("Valuing {v:?}");
                 Ok(v)
             },
         }
@@ -237,7 +264,7 @@ mod tests {
 
         let ast: Result<AstNode, Error> = tokens.try_into();
 
-        println!("{ast:?}");
+        println!("{ast:#?}");
 
         let ast = ast.unwrap();
 
