@@ -8,11 +8,27 @@ pub enum Value {
     String(String),
     Integer(isize),
     Float(f64),
+    List(Vec<Value>),
 }
 
 impl Default for Value {
     fn default() -> Self {
         Value::Unit
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Unit => write!(f, ""),
+            Value::String(v) => write!(f, "{v}"),
+            Value::Integer(v) => write!(f, "{v}"),
+            Value::Float(v) => write!(f, "{v}"),
+            Value::List(v) => {
+                let s: Vec<_> = v.iter().map(|vv| vv.to_string()).collect();
+                write!(f, "{}", s.join(","))
+            },
+        }
     }
 }
 
@@ -173,6 +189,13 @@ impl Variable for DebugPrint {
     }
 }
 
+pub struct MkList;
+
+impl Variable for MkList {
+    fn eval(&self, args: Vec<Value>) -> Value {
+        Value::List(args)
+    }
+}
 
 pub struct Environment {
     env: HashMap<String, Box<dyn Variable>>,
@@ -186,6 +209,7 @@ impl Default for Environment {
         env.insert("begin".to_owned(), Box::new(Begin));
         env.insert("pi".to_owned(), Box::new(ConstVal(Value::Float(std::f64::consts::PI))));
         env.insert("debug".to_owned(), Box::new(DebugPrint));
+        env.insert("list".to_owned(), Box::new(MkList));
         Self { env }
     }
 }
