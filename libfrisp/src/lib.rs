@@ -7,6 +7,7 @@ pub mod ast;
 pub enum Error {
     TokenizerError(String),
     ParserError(String),
+    EvalError(String),
 }
 
 impl Display for Error {

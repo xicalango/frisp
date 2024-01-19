@@ -1,12 +1,19 @@
-use std::fmt::Display;
+use std::{fmt::Display, collections::HashMap};
 
 use crate::{token::{TokenStream, Token}, Error};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Value {
+    Unit,
     String(String),
     Integer(isize),
     Float(f64),
+}
+
+impl Default for Value {
+    fn default() -> Self {
+        Value::Unit
+    }
 }
 
 impl TryFrom<Token> for Value {
@@ -27,6 +34,12 @@ pub enum AstNode {
     List(Vec<AstNode>),
     Symbol(String),
     Value(Value),
+}
+
+impl Default for AstNode {
+    fn default() -> Self {
+        AstNode::List(Vec::new())
+    }
 }
 
 impl<I> TryFrom<TokenStream<I>> for AstNode 
@@ -96,13 +109,128 @@ where I: Iterator<Item = char> {
 }
 
 
+pub trait Variable {
+    fn eval(&self, args: Vec<Value>) -> Value;
+}
+
+pub struct ConstVal(Value);
+
+impl Variable for ConstVal {
+    fn eval(&self, args: Vec<Value>) -> Value {
+        let ConstVal(v) = self;
+        v.clone()
+    }
+}
+
+pub struct Mul;
+
+impl Variable for Mul {
+    fn eval(&self, args: Vec<Value>) -> Value {
+        match (&args[0], &args[1]) {
+            (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 * v2),
+            (Value::Integer(v1), Value::Float(v2)) => Value::Float(*v1 as f64 * v2),
+            (Value::Float(v1), Value::Integer(v2)) => Value::Float(v1 * *v2 as f64),
+            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 * v2),
+            _ => panic!()
+        }
+    }
+}
+
+pub struct Begin;
+
+impl Variable for Begin {
+    fn eval(&self, mut args: Vec<Value>) -> Value {
+        if let Some(v) = args.last_mut() {
+            std::mem::take(v)
+        } else {
+            Value::Unit
+        }
+    }
+}
+
+
+pub struct Environment {
+    env: HashMap<String, Box<dyn Variable>>,
+}
+
+impl Default for Environment {
+    fn default() -> Self {
+        let mut env: HashMap<String, Box<dyn Variable>> = HashMap::new();
+        env.insert("mul".to_owned(), Box::new(Mul));
+        env.insert("begin".to_owned(), Box::new(Begin));
+        env.insert("pi".to_owned(), Box::new(ConstVal(Value::Float(std::f64::consts::PI))));
+        Self { env }
+    }
+}
+
+impl AstNode {
+
+    pub fn eval(self, env: &mut Environment) -> Result<Value, Error> {
+        match self {
+            AstNode::List(mut l) => {
+                let head: Vec<_> = l.drain(0..1).collect();
+
+                println!("evaluating {head:?}");
+
+                match head.get(0) {
+                    Some(AstNode::Symbol(s)) if s == "if" => {
+                        let test = std::mem::take(&mut l[0]);
+                        let conseq = std::mem::take(&mut l[1]);
+                        let alt = std::mem::take(&mut l[2]);
+
+                        if test.eval(env)? == Value::Integer(1) {
+                            return conseq.eval(env);
+                        } else {
+                            return alt.eval(env);
+                        }
+                    },
+                    Some(AstNode::Symbol(s)) if s == "define" => {
+                        let symbol = std::mem::take(&mut l[0]);
+                        let val = std::mem::take(&mut l[1]);
+                        
+                        if let AstNode::Symbol(sym) = symbol {
+                            let value = val.eval(env)?;
+                            env.env.insert(sym, Box::new(ConstVal(value)));
+                        }
+
+                        return Ok(Value::Unit);
+                    },
+                    Some(AstNode::Symbol(s)) => {
+                        let mut args: Vec<Value> = Vec::new();
+
+                        for v in l {
+                            args.push(v.eval(env)?);
+                        }
+
+                        let var = &env.env.get(s).ok_or(Error::EvalError(format!("proc not found: {s}")))?;
+                        Ok(var.eval(args))
+                    }
+                    o => {
+                        return Err(Error::EvalError(format!("invalid at this point in time: {o:?}")))
+                    }
+                }
+            },
+            AstNode::Symbol(s) => {
+                println!("suymboling {s:?}");
+                let var = env.env.get(&s).ok_or(Error::EvalError(format!("invalid symbol: {s:?}")))?;
+                Ok(var.eval(Vec::new()))
+            },
+            AstNode::Value(v) => {
+                println!("valuing {v:?}");
+                Ok(v)
+            },
+        }
+    }
+
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn it_works() {
-
         let string = "(begin (define r 10) (mul 10 pi (mul r r)))";
 
         let tokens = TokenStream::new(string.chars());
@@ -111,6 +239,13 @@ mod tests {
 
         println!("{ast:?}");
 
+        let ast = ast.unwrap();
+
+        let mut env = Environment::default();
+
+        let res = ast.eval(&mut env);
+
+        println!("{res:?}");
     }
 
 }
