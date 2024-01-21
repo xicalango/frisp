@@ -9,6 +9,7 @@ pub enum Token {
     Float(f64),
     Symbol(String),
     String(String),
+    Error(String),
 }
 
 pub struct TokenStream<I> {
@@ -57,7 +58,7 @@ where I: Iterator<Item = char> {
 
                         buf.push(c);
                     }
-                    panic!("EOF while reading string");
+                    return Some(Token::Error("EOF while reading string".to_string()));
                 },
                 c if c.is_ascii_digit() => {
                     let mut is_float = false;
@@ -86,11 +87,11 @@ where I: Iterator<Item = char> {
                             is_float = true;
                             buf.push(c);
                         } else {
-                            panic!("invalid digit: {c}");
+                            return Some(Token::Error(format!("invalid digit: {c}")));
                         }
                     }
 
-                    panic!("EOF while reading number");
+                    return Some(Token::Error("EOF while reading number".to_string()));
                 }
                 c if c.is_ascii_alphabetic() => {
                     let mut buf = String::new();
@@ -107,13 +108,13 @@ where I: Iterator<Item = char> {
                         } else if c.is_ascii_alphanumeric() {
                             buf.push(c)
                         } else {
-                            panic!("invalid symbol char: {c}");
+                            return Some(Token::Error(format!("invalid char sym: {c}")));
                         }
                     }
 
-                    panic!("EOF while reading symbol");
+                    return Some(Token::Error("EOF while reading symbol".to_string()));
                 }
-                e => panic!("eheh {e:?}"),
+                e => return Some(Token::Error(format!("eheh {e:?}"))),
             }
         }
         return None;

@@ -20,7 +20,7 @@ fn main() {
                     Err(e) => println!("error evaluating: {e:?}"),
                 }
             },
-            Err(e) => println!("couldn't parse: {e:?}"),
+            Err(e) => println!("Error: {e:?}"),
         }
     }
 }

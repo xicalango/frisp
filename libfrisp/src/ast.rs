@@ -117,6 +117,9 @@ where I: Iterator<Item = char> {
                         return Ok(value);
                     }
                 },
+                Token::Error(e) => {
+                    return Err(Error::TokenizerError(e));
+                }
             }
         }
 
@@ -241,8 +244,10 @@ impl AstNode {
                         
                         if let AstNode::Symbol(sym) = symbol {
                             let value = val.eval(env)?;
+                            println!("defined {sym} to be {value:?}");
                             env.env.insert(sym, Box::new(ConstVal(value)));
                         }
+
 
                         return Ok(Value::Unit);
                     },
@@ -254,7 +259,9 @@ impl AstNode {
                         }
 
                         let var = &env.env.get(s).ok_or(Error::EvalError(format!("proc not found: {s}")))?;
-                        Ok(var.eval(args))
+                        let value = var.eval(args);
+                        println!("evaluated {s} to {value:?}");
+                        Ok(value)
                     }
                     o => {
                         return Err(Error::EvalError(format!("invalid at this point in time: {o:?}")))
