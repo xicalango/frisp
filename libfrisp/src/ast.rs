@@ -1,4 +1,4 @@
-use std::{fmt::{Display, format}, collections::HashMap, rc::Rc};
+use std::{fmt::{Display}, collections::HashMap, rc::Rc};
 
 use crate::{token::{TokenStream, Token}, Error};
 
