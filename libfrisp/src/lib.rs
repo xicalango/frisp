@@ -9,6 +9,10 @@ pub enum Error {
     ParserError(String),
     EvalError(String),
     VarEvalError(String),
+    VarEvalArgNumError {
+        expected: usize,
+        actual: usize,
+    },
 }
 
 impl Display for Error {

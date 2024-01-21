@@ -194,7 +194,7 @@ impl Variable for ConstVal {
 
         if let Value::Lambda(vars, body) = v {
             if vars.len() != args.len() {
-                return Err(Error::VarEvalError(format!("invalid number of arguments. expected {}, got {}", vars.len(), args.len())))
+                return Err(Error::VarEvalArgNumError { expected: vars.len(), actual: args.len() });
             }
             let mut local_env = env.sub_env();
 
@@ -205,7 +205,7 @@ impl Variable for ConstVal {
             body.eval(&mut local_env)
                 .map_err(|e| Error::VarEvalError(format!("eval error: {e}")))
         } else {
-            return Err(Error::VarEvalError(format!("invalid number of arguments. expected none, got {}", args.len())))
+            return Err(Error::VarEvalArgNumError { expected: 0, actual: args.len() });
         }
     }
 }
