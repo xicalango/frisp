@@ -1,4 +1,4 @@
-use std::{fmt::Display, collections::HashMap, rc::Rc};
+use std::{fmt::{Display, format}, collections::HashMap, rc::Rc};
 
 use crate::{token::{TokenStream, Token}, Error};
 
@@ -179,17 +179,17 @@ where I: Iterator<Item = char> {
 
 
 pub trait Variable {
-    fn eval(&self, env: &Environment, args: Vec<Value>) -> Value;
+    fn eval(&self, env: &Environment, args: Vec<Value>) -> Result<Value, Error>;
 }
 
 pub struct ConstVal(Value);
 
 impl Variable for ConstVal {
-    fn eval(&self, env: &Environment, args: Vec<Value>) -> Value {
+    fn eval(&self, env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
         let ConstVal(v) = self;
 
         if args.len() == 0 {
-            return v.clone();
+            return Ok(v.clone());
         }
 
         if let Value::Lambda(vars, body) = v {
@@ -199,7 +199,8 @@ impl Variable for ConstVal {
                 local_env.insert_var(name.clone(), ConstVal(value));
             }
 
-            body.clone().eval(&mut local_env).unwrap()
+            body.clone().eval(&mut local_env)
+                .map_err(|e| Error::VarEvalError(format!("eval error: {e}")))
         } else {
             panic!("invalid number of arguments")
         }
@@ -210,13 +211,13 @@ impl Variable for ConstVal {
 pub struct Mul;
 
 impl Variable for Mul {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
         match (&args[0], &args[1]) {
-            (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 * v2),
-            (Value::Integer(v1), Value::Float(v2)) => Value::Float(*v1 as f64 * v2),
-            (Value::Float(v1), Value::Integer(v2)) => Value::Float(v1 * *v2 as f64),
-            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 * v2),
-            _ => panic!()
+            (Value::Integer(v1), Value::Integer(v2)) => Ok(Value::Integer(v1 * v2)),
+            (Value::Integer(v1), Value::Float(v2)) => Ok(Value::Float(*v1 as f64 * v2)),
+            (Value::Float(v1), Value::Integer(v2)) => Ok(Value::Float(v1 * *v2 as f64)),
+            (Value::Float(v1), Value::Float(v2)) => Ok(Value::Float(v1 * v2)),
+            (v1, v2) => Err(Error::VarEvalError(format!("cannot add {v1:?} and {v2:?}"))),
         }
     }
 }
@@ -224,13 +225,13 @@ impl Variable for Mul {
 pub struct Add;
 
 impl Variable for Add {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
         match (&args[0], &args[1]) {
-            (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 + v2),
-            (Value::Integer(v1), Value::Float(v2)) => Value::Float(*v1 as f64 + v2),
-            (Value::Float(v1), Value::Integer(v2)) => Value::Float(v1 + *v2 as f64),
-            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 + v2),
-            _ => panic!()
+            (Value::Integer(v1), Value::Integer(v2)) => Ok(Value::Integer(v1 + v2)),
+            (Value::Integer(v1), Value::Float(v2)) => Ok(Value::Float(*v1 as f64 + v2)),
+            (Value::Float(v1), Value::Integer(v2)) => Ok(Value::Float(v1 + *v2 as f64)),
+            (Value::Float(v1), Value::Float(v2)) => Ok(Value::Float(v1 + v2)),
+            (v1, v2) => Err(Error::VarEvalError(format!("cannot add {v1:?} and {v2:?}"))),
         }
     }
 }
@@ -238,14 +239,8 @@ impl Variable for Add {
 pub struct Eq;
 
 impl Variable for Eq {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
-        match (&args[0], &args[1]) {
-            (Value::Integer(v1), Value::Integer(v2)) => Value::bool(v1 == v2),
-            (Value::Integer(v1), Value::Float(v2)) => Value::bool(*v1 as f64 == *v2),
-            (Value::Float(v1), Value::Integer(v2)) => Value::bool(*v1 == *v2 as f64),
-            (Value::Float(v1), Value::Float(v2)) => Value::bool(v1 == v2),
-            _ => panic!()
-        }
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        Ok(Value::bool(&args[0] == &args[1]))
     }
 }
 
@@ -253,11 +248,11 @@ impl Variable for Eq {
 pub struct Begin;
 
 impl Variable for Begin {
-    fn eval(&self, _env: &Environment, mut args: Vec<Value>) -> Value {
+    fn eval(&self, _env: &Environment, mut args: Vec<Value>) -> Result<Value, Error> {
         if let Some(v) = args.last_mut() {
-            std::mem::take(v)
+            Ok(std::mem::take(v))
         } else {
-            Value::Unit
+            Ok(Value::Unit)
         }
     }
 }
@@ -265,19 +260,19 @@ impl Variable for Begin {
 pub struct DebugPrint;
 
 impl Variable for DebugPrint {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
         for (i, arg) in args.iter().enumerate() {
             println!("{i}: {arg:?}");
         }
-        Value::Unit
+        Ok(Value::Unit)
     }
 }
 
 pub struct MkList;
 
 impl Variable for MkList {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
-        Value::List(args)
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        Ok(Value::List(args))
     }
 }
 
@@ -387,7 +382,7 @@ impl AstNode {
                         let var = env.get_var(s).ok_or(Error::EvalError(format!("proc not found: {s}")))?;
                         let value = var.eval(&env, args);
                         println!("evaluated {s} to {value:?}");
-                        Ok(value)
+                        value
                     }
                     o => {
                         return Err(Error::EvalError(format!("invalid at this point in time: {o:?}")))
@@ -397,7 +392,7 @@ impl AstNode {
             AstNode::Symbol(s) => {
                 println!("Symboling {s:?}");
                 let var = env.get_var(&s).ok_or(Error::EvalError(format!("invalid symbol: {s:?}")))?;
-                Ok(var.eval(&env, Vec::new()))
+                var.eval(&env, Vec::new())
             },
             AstNode::Value(v) => {
                 println!("Valuing {v:?}");

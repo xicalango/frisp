@@ -8,6 +8,7 @@ pub enum Error {
     TokenizerError(String),
     ParserError(String),
     EvalError(String),
+    VarEvalError(String),
 }
 
 impl Display for Error {
