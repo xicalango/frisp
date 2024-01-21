@@ -1,4 +1,4 @@
-use std::{fmt::Display, collections::HashMap};
+use std::{fmt::Display, collections::HashMap, rc::Rc};
 
 use crate::{token::{TokenStream, Token}, Error};
 
@@ -9,6 +9,7 @@ pub enum Value {
     Integer(isize),
     Float(f64),
     List(Vec<Value>),
+    Lambda(Vec<String>, Box<AstNode>),
 }
 
 impl Default for Value {
@@ -16,6 +17,27 @@ impl Default for Value {
         Value::Unit
     }
 }
+
+impl Value {
+
+    pub fn bool(v: bool) -> Value {
+        Value::int(v)
+    }
+
+    pub fn int<T: Into<isize>>(v: T) -> Value {
+        Value::Integer(v.into())
+    }
+
+    pub fn float<T: Into<f64>>(v: T) -> Value {
+        Value::Float(v.into())
+    }
+
+    pub fn string<T: ToString>(v: T) -> Value {
+        Value::String(v.to_string())
+    }
+
+}
+
 
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -27,6 +49,9 @@ impl Display for Value {
             Value::List(v) => {
                 let s: Vec<_> = v.iter().map(|vv| vv.to_string()).collect();
                 write!(f, "{}", s.join(","))
+            },
+            Value::Lambda(args, body) => {
+                write!(f, "(lambda {args:?} {body:?})")
             },
         }
     }
@@ -45,11 +70,36 @@ impl TryFrom<Token> for Value {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AstNode {
     List(Vec<AstNode>),
     Symbol(String),
     Value(Value),
+}
+
+impl AstNode {
+
+    pub fn try_to_list(self) -> Result<Vec<AstNode>, AstNode> {
+        match self {
+            AstNode::List(list) => Ok(list),
+            o => Err(o),
+        }
+    }
+
+    pub fn try_to_symbol(self) -> Result<String, AstNode> {
+        match self {
+            AstNode::Symbol(value) => Ok(value),
+            o => Err(o),
+        }
+    }
+    
+    pub fn try_to_value(self) -> Result<Value, AstNode> {
+        match self {
+            AstNode::Value(value) => Ok(value),
+            o => Err(o),
+        }
+    }
+
 }
 
 impl Default for AstNode {
@@ -129,22 +179,38 @@ where I: Iterator<Item = char> {
 
 
 pub trait Variable {
-    fn eval(&self, args: Vec<Value>) -> Value;
+    fn eval(&self, env: &Environment, args: Vec<Value>) -> Value;
 }
 
 pub struct ConstVal(Value);
 
 impl Variable for ConstVal {
-    fn eval(&self, args: Vec<Value>) -> Value {
+    fn eval(&self, env: &Environment, args: Vec<Value>) -> Value {
         let ConstVal(v) = self;
-        v.clone()
+
+        if args.len() == 0 {
+            return v.clone();
+        }
+
+        if let Value::Lambda(vars, body) = v {
+            let mut local_env = env.clone();
+
+            for (name, value) in vars.iter().zip(args.into_iter()) {
+                local_env.insert_var(name.clone(), ConstVal(value));
+            }
+
+            body.clone().eval(&mut local_env).unwrap()
+        } else {
+            panic!("invalid number of arguments")
+        }
     }
 }
+
 
 pub struct Mul;
 
 impl Variable for Mul {
-    fn eval(&self, args: Vec<Value>) -> Value {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
         match (&args[0], &args[1]) {
             (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 * v2),
             (Value::Integer(v1), Value::Float(v2)) => Value::Float(*v1 as f64 * v2),
@@ -158,7 +224,7 @@ impl Variable for Mul {
 pub struct Add;
 
 impl Variable for Add {
-    fn eval(&self, args: Vec<Value>) -> Value {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
         match (&args[0], &args[1]) {
             (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 + v2),
             (Value::Integer(v1), Value::Float(v2)) => Value::Float(*v1 as f64 + v2),
@@ -169,10 +235,25 @@ impl Variable for Add {
     }
 }
 
+pub struct Eq;
+
+impl Variable for Eq {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
+        match (&args[0], &args[1]) {
+            (Value::Integer(v1), Value::Integer(v2)) => Value::bool(v1 == v2),
+            (Value::Integer(v1), Value::Float(v2)) => Value::bool(*v1 as f64 == *v2),
+            (Value::Float(v1), Value::Integer(v2)) => Value::bool(*v1 == *v2 as f64),
+            (Value::Float(v1), Value::Float(v2)) => Value::bool(v1 == v2),
+            _ => panic!()
+        }
+    }
+}
+
+
 pub struct Begin;
 
 impl Variable for Begin {
-    fn eval(&self, mut args: Vec<Value>) -> Value {
+    fn eval(&self, _env: &Environment, mut args: Vec<Value>) -> Value {
         if let Some(v) = args.last_mut() {
             std::mem::take(v)
         } else {
@@ -184,7 +265,7 @@ impl Variable for Begin {
 pub struct DebugPrint;
 
 impl Variable for DebugPrint {
-    fn eval(&self, args: Vec<Value>) -> Value {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
         for (i, arg) in args.iter().enumerate() {
             println!("{i}: {arg:?}");
         }
@@ -195,25 +276,55 @@ impl Variable for DebugPrint {
 pub struct MkList;
 
 impl Variable for MkList {
-    fn eval(&self, args: Vec<Value>) -> Value {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Value {
         Value::List(args)
     }
 }
 
+pub trait Env {
+    fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>>;
+
+    fn insert_var(&mut self, name: impl ToString, var: impl Variable + 'static);
+}
+
+#[derive(Clone)]
 pub struct Environment {
-    env: HashMap<String, Box<dyn Variable>>,
+    env: HashMap<String, Rc<dyn Variable>>,
 }
 
 impl Default for Environment {
     fn default() -> Self {
-        let mut env: HashMap<String, Box<dyn Variable>> = HashMap::new();
-        env.insert("add".to_owned(), Box::new(Mul));
-        env.insert("mul".to_owned(), Box::new(Mul));
-        env.insert("begin".to_owned(), Box::new(Begin));
-        env.insert("pi".to_owned(), Box::new(ConstVal(Value::Float(std::f64::consts::PI))));
-        env.insert("debug".to_owned(), Box::new(DebugPrint));
-        env.insert("list".to_owned(), Box::new(MkList));
-        Self { env }
+        Environment::empty()
+    }
+}
+
+impl Environment {
+
+    pub fn empty() -> Environment {
+        Environment { env: Default::default() }
+    }
+
+    pub fn with_default_content() -> Environment {
+        let mut env: HashMap<String, Rc<dyn Variable>> = HashMap::new();
+        env.insert("add".to_owned(), Rc::new(Add));
+        env.insert("mul".to_owned(), Rc::new(Mul));
+        env.insert("eq".to_owned(), Rc::new(Eq));
+        env.insert("begin".to_owned(), Rc::new(Begin));
+        env.insert("pi".to_owned(), Rc::new(ConstVal(Value::Float(std::f64::consts::PI))));
+        env.insert("debug".to_owned(), Rc::new(DebugPrint));
+        env.insert("list".to_owned(), Rc::new(MkList));
+        Environment { env }
+    }
+
+}
+
+impl Env for Environment {
+    fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>> {
+        self.env.get(name)
+    }
+
+    fn insert_var(&mut self, name: impl ToString, var: impl Variable + 'static) {
+        self.env.insert(name.to_string(), Rc::new(var));
     }
 }
 
@@ -245,12 +356,27 @@ impl AstNode {
                         if let AstNode::Symbol(sym) = symbol {
                             let value = val.eval(env)?;
                             println!("defined {sym} to be {value:?}");
-                            env.env.insert(sym, Box::new(ConstVal(value)));
+                            env.insert_var(sym, ConstVal(value));
                         }
 
 
                         return Ok(Value::Unit);
                     },
+                    Some(AstNode::Symbol(s)) if s == "lambda" => {
+                        let args = std::mem::take(&mut l[0]);
+                        let body = std::mem::take(&mut l[1]);
+
+                        let args = args.try_to_list().map_err(|n| Error::EvalError(format!("not a list: {n:?}")))?;
+
+                        let args: Result<Vec<String>, Error> = args.into_iter()
+                            .map(|v| v.try_to_symbol()
+                                .map_err(|n| Error::EvalError(format!("not a symbol: {n:?}")))
+                            ).collect();
+
+                        let args = args?;
+
+                        return Ok(Value::Lambda(args, Box::new(body)));
+                    }
                     Some(AstNode::Symbol(s)) => {
                         let mut args: Vec<Value> = Vec::new();
 
@@ -258,8 +384,8 @@ impl AstNode {
                             args.push(v.eval(env)?);
                         }
 
-                        let var = &env.env.get(s).ok_or(Error::EvalError(format!("proc not found: {s}")))?;
-                        let value = var.eval(args);
+                        let var = env.get_var(s).ok_or(Error::EvalError(format!("proc not found: {s}")))?;
+                        let value = var.eval(&env, args);
                         println!("evaluated {s} to {value:?}");
                         Ok(value)
                     }
@@ -270,8 +396,8 @@ impl AstNode {
             },
             AstNode::Symbol(s) => {
                 println!("Symboling {s:?}");
-                let var = env.env.get(&s).ok_or(Error::EvalError(format!("invalid symbol: {s:?}")))?;
-                Ok(var.eval(Vec::new()))
+                let var = env.get_var(&s).ok_or(Error::EvalError(format!("invalid symbol: {s:?}")))?;
+                Ok(var.eval(&env, Vec::new()))
             },
             AstNode::Value(v) => {
                 println!("Valuing {v:?}");
@@ -299,7 +425,7 @@ mod tests {
 
         let ast = ast.unwrap();
 
-        let mut env = Environment::default();
+        let mut env = Environment::with_default_content();
 
         let res = ast.eval(&mut env);
 

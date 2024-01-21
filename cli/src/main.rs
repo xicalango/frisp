@@ -7,7 +7,7 @@ use libfrisp::{token::TokenStream, ast::{AstNode, Environment}};
 
 fn main() {
 
-    let mut env = Environment::default();
+    let mut env = Environment::with_default_content();
 
     for line in stdin().lines() {
         let line = line.unwrap();
