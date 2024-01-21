@@ -193,7 +193,7 @@ impl Variable for ConstVal {
         }
 
         if let Value::Lambda(vars, body) = v {
-            let mut local_env = env.clone();
+            let mut local_env = env.sub_env();
 
             for (name, value) in vars.iter().zip(args.into_iter()) {
                 local_env.insert_var(name.clone(), ConstVal(value));
@@ -283,23 +283,24 @@ pub trait Env {
 }
 
 #[derive(Clone)]
-pub struct Environment {
+pub struct Environment<'a> {
     env: HashMap<String, Rc<dyn Variable>>,
+    parent_env: Option<&'a Environment<'a>>
 }
 
-impl Default for Environment {
+impl Default for Environment<'_> {
     fn default() -> Self {
         Environment::empty()
     }
 }
 
-impl Environment {
+impl<'a> Environment<'a> {
 
-    pub fn empty() -> Environment {
-        Environment { env: Default::default() }
+    pub fn empty() -> Environment<'a> {
+        Environment { env: Default::default(), parent_env: None }
     }
 
-    pub fn with_default_content() -> Environment {
+    pub fn with_default_content() -> Environment<'a> {
         let mut env: HashMap<String, Rc<dyn Variable>> = HashMap::new();
         env.insert("add".to_owned(), Rc::new(Add));
         env.insert("mul".to_owned(), Rc::new(Mul));
@@ -308,14 +309,18 @@ impl Environment {
         env.insert("pi".to_owned(), Rc::new(ConstVal(Value::Float(std::f64::consts::PI))));
         env.insert("debug".to_owned(), Rc::new(DebugPrint));
         env.insert("list".to_owned(), Rc::new(MkList));
-        Environment { env }
+        Environment { env, parent_env: None }
+    }
+
+    pub fn sub_env(&'a self) -> Environment<'a> {
+        Environment { env: Default::default(), parent_env: Some(self) }
     }
 
 }
 
-impl Env for Environment {
+impl<'a> Env for Environment<'a> {
     fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>> {
-        self.env.get(name)
+        self.parent_env.and_then(|pe| pe.get_var(name)).or_else(|| self.env.get(name))
     }
 
     fn insert_var(&mut self, name: impl ToString, var: impl Variable + 'static) {
