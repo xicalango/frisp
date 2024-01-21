@@ -199,7 +199,7 @@ impl Variable for ConstVal {
                 local_env.insert_var(name.clone(), ConstVal(value));
             }
 
-            body.clone().eval(&mut local_env)
+            body.eval(&mut local_env)
                 .map_err(|e| Error::VarEvalError(format!("eval error: {e}")))
         } else {
             panic!("invalid number of arguments")
@@ -330,18 +330,17 @@ impl<'a> Env for Environment<'a> {
 
 impl AstNode {
 
-    pub fn eval(self, env: &mut Environment) -> Result<Value, Error> {
+    pub fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
         match self {
-            AstNode::List(mut l) => {
-                let head: Vec<_> = l.drain(0..1).collect();
+            AstNode::List(l) => {
+                println!("evaluating {:?}", l.get(0));
 
-                println!("evaluating {head:?}");
-
-                match head.get(0) {
+                match l.get(0) {
                     Some(AstNode::Symbol(s)) if s == "if" => {
-                        let test = std::mem::take(&mut l[0]);
-                        let conseq = std::mem::take(&mut l[1]);
-                        let alt = std::mem::take(&mut l[2]);
+                        let test = l.get(1).ok_or(Error::EvalError(format!("missing test")))?;
+                        let conseq = l.get(2).ok_or(Error::EvalError(format!("missing conseq")))?;
+                        let alt = l.get(3).ok_or(Error::EvalError(format!("missing alt")))?;
+
 
                         if test.eval(env)? == Value::Integer(1) {
                             return conseq.eval(env);
@@ -350,9 +349,9 @@ impl AstNode {
                         }
                     },
                     Some(AstNode::Symbol(s)) if s == "define" => {
-                        let symbol = std::mem::take(&mut l[0]);
-                        let val = std::mem::take(&mut l[1]);
-                        
+                        let symbol = l.get(1).ok_or(Error::EvalError(format!("no symbol for define")))?;
+                        let val = l.get(2).ok_or(Error::EvalError(format!("no value for define")))?;
+
                         if let AstNode::Symbol(sym) = symbol {
                             let value = val.eval(env)?;
                             println!("defined {sym} to be {value:?}");
@@ -363,10 +362,10 @@ impl AstNode {
                         return Ok(Value::Unit);
                     },
                     Some(AstNode::Symbol(s)) if s == "lambda" => {
-                        let args = std::mem::take(&mut l[0]);
-                        let body = std::mem::take(&mut l[1]);
+                        let args = l.get(1).ok_or(Error::EvalError(format!("no args for lambda")))?;
+                        let body = l.get(2).ok_or(Error::EvalError(format!("no body for lambda")))?;
 
-                        let args = args.try_to_list().map_err(|n| Error::EvalError(format!("not a list: {n:?}")))?;
+                        let args = args.to_owned().try_to_list().map_err(|n| Error::EvalError(format!("not a list: {n:?}")))?;
 
                         let args: Result<Vec<String>, Error> = args.into_iter()
                             .map(|v| v.try_to_symbol()
@@ -375,12 +374,12 @@ impl AstNode {
 
                         let args = args?;
 
-                        return Ok(Value::Lambda(args, Box::new(body)));
+                        return Ok(Value::Lambda(args, Box::new(body.clone())));
                     }
                     Some(AstNode::Symbol(s)) => {
                         let mut args: Vec<Value> = Vec::new();
 
-                        for v in l {
+                        for v in &l[1..] {
                             args.push(v.eval(env)?);
                         }
 
@@ -390,18 +389,18 @@ impl AstNode {
                         value
                     }
                     o => {
-                        return Err(Error::EvalError(format!("invalid at this point in time: {o:?}")))
+                        return Err(Error::EvalError(format!("invalid at this point in time: {l:?}")))
                     }
                 }
             },
             AstNode::Symbol(s) => {
                 println!("Symboling {s:?}");
-                let var = env.get_var(&s).ok_or(Error::EvalError(format!("invalid symbol: {s:?}")))?;
+                let var = env.get_var(&s).ok_or(Error::EvalError(format!("symbol not found: {s:?}")))?;
                 var.eval(&env, Vec::new())
             },
             AstNode::Value(v) => {
                 println!("Valuing {v:?}");
-                Ok(v)
+                Ok(v.clone())
             },
         }
     }
