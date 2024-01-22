@@ -48,7 +48,7 @@ impl Display for Value {
             Value::Float(v) => write!(f, "{v}"),
             Value::List(v) => {
                 let s: Vec<_> = v.iter().map(|vv| vv.to_string()).collect();
-                write!(f, "{}", s.join(","))
+                write!(f, "({})", s.join(","))
             },
             Value::Lambda(args, body) => {
                 write!(f, "(lambda {args:?} {body:?})")
@@ -215,6 +215,9 @@ pub struct Mul;
 
 impl Variable for Mul {
     fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        if args.len() != 2 {
+            return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
+        }
         match (&args[0], &args[1]) {
             (Value::Integer(v1), Value::Integer(v2)) => Ok(Value::Integer(v1 * v2)),
             (Value::Integer(v1), Value::Float(v2)) => Ok(Value::Float(*v1 as f64 * v2)),
@@ -229,6 +232,10 @@ pub struct Add;
 
 impl Variable for Add {
     fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        if args.len() != 2 {
+            return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
+        }
+
         match (&args[0], &args[1]) {
             (Value::Integer(v1), Value::Integer(v2)) => Ok(Value::Integer(v1 + v2)),
             (Value::Integer(v1), Value::Float(v2)) => Ok(Value::Float(*v1 as f64 + v2)),
@@ -243,6 +250,9 @@ pub struct Eq;
 
 impl Variable for Eq {
     fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        if args.len() != 2 {
+            return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
+        }
         Ok(Value::bool(&args[0] == &args[1]))
     }
 }
@@ -391,7 +401,7 @@ impl AstNode {
                         println!("evaluated {s} to {value:?}");
                         value
                     }
-                    o => {
+                    _ => {
                         return Err(Error::EvalError(format!("invalid at this point in time: {l:?}")))
                     }
                 }

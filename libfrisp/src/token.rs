@@ -91,7 +91,11 @@ where I: Iterator<Item = char> {
                         }
                     }
 
-                    return Some(Token::Error("EOF while reading number".to_string()));
+                    if is_float {
+                        return Some(Token::Float(buf.parse().unwrap()));
+                    } else {
+                        return Some(Token::Integer(buf.parse().unwrap()));
+                    }
                 }
                 c if c.is_ascii_alphabetic() => {
                     let mut buf = String::new();
@@ -112,7 +116,7 @@ where I: Iterator<Item = char> {
                         }
                     }
 
-                    return Some(Token::Error("EOF while reading symbol".to_string()));
+                    return Some(Token::Symbol(buf));
                 }
                 e => return Some(Token::Error(format!("eheh {e:?}"))),
             }
