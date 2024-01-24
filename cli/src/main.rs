@@ -1,6 +1,6 @@
 use std::io::stdin;
 
-use libfrisp::{token::TokenStream, ast::{AstNode, Environment}};
+use libfrisp::{token::TokenStream, ast::{AstNode, Environment, Value}};
 
 
 
@@ -16,6 +16,7 @@ fn main() {
         match AstNode::try_from(tokens) {
             Ok(node) => {
                 match node.eval(&mut env) {
+                    Ok(Value::Unit) => {},
                     Ok(v) => println!("{v}"),
                     Err(e) => println!("error evaluating: {e:?}"),
                 }

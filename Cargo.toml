@@ -4,3 +4,9 @@ resolver = "2"
 
 members = ["cli", "libfrisp"]
 
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true
+panic = "abort"
+codegen-units = 1
