@@ -9,7 +9,8 @@ pub enum Value {
     Integer(isize),
     Float(f64),
     List(Vec<Value>),
-    Lambda(Vec<String>, Box<AstNode>),
+    Lambda(Vec<String>, Vec<AstNode>),
+    SymbolRef(String),
 }
 
 impl Default for Value {
@@ -53,6 +54,7 @@ impl Display for Value {
             Value::Lambda(args, body) => {
                 write!(f, "(lambda {args:?} {body:?})")
             },
+            Value::SymbolRef(v) => write!(f, "[{v}]"),
         }
     }
 }
@@ -180,6 +182,10 @@ where I: Iterator<Item = char> {
 
 pub trait Variable {
     fn eval(&self, env: &Environment, args: Vec<Value>) -> Result<Value, Error>;
+
+    fn val(&self) -> Option<Value> {
+        None
+    }
 }
 
 pub struct ConstVal(Value);
@@ -188,25 +194,46 @@ impl Variable for ConstVal {
     fn eval(&self, env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
         let ConstVal(v) = self;
 
-        if args.len() == 0 {
-            return Ok(v.clone());
-        }
+        match v {
+            Value::Lambda(vars, body) => {
+                if vars.len() != args.len() {
+                    return Err(Error::VarEvalArgNumError { expected: vars.len(), actual: args.len() });
+                }
+                let mut local_env = env.sub_env();
 
-        if let Value::Lambda(vars, body) = v {
-            if vars.len() != args.len() {
-                return Err(Error::VarEvalArgNumError { expected: vars.len(), actual: args.len() });
+                for (name, value) in vars.iter().zip(args.into_iter()) {
+                    println!("local env setting {name} to {value}");
+                    local_env.insert_var(name.clone(), ConstVal(value));
+                }
+
+                let mut last_value = None;
+
+                for stmt in body {
+                    last_value = Some(stmt.eval(&mut local_env)
+                        .map_err(|e| Error::VarEvalError(format!("eval error: {e}")))?)
+                }
+                
+                last_value.ok_or(Error::VarEvalError(format!("no value")))
             }
-            let mut local_env = env.sub_env();
-
-            for (name, value) in vars.iter().zip(args.into_iter()) {
-                local_env.insert_var(name.clone(), ConstVal(value));
+            Value::SymbolRef(sym) => {
+                let var = env.get_var(&sym)
+                    .ok_or(Error::VarEvalError(format!("unknown symbol: {sym}")))?;
+                var.eval(env, args)
             }
-
-            body.eval(&mut local_env)
-                .map_err(|e| Error::VarEvalError(format!("eval error: {e}")))
-        } else {
-            return Err(Error::VarEvalArgNumError { expected: 0, actual: args.len() });
+            _ => {
+                if !args.is_empty() {
+                    Err(Error::VarEvalArgNumError { expected: 0, actual: args.len() })
+                } else {
+                    Ok(v.clone())
+                }
+            }
         }
+    }
+
+    fn val(&self) -> Option<Value> {
+        let ConstVal(v) = self;
+
+        Some(v.clone())
     }
 }
 
@@ -333,7 +360,11 @@ impl<'a> Environment<'a> {
 
 impl<'a> Env for Environment<'a> {
     fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>> {
-        self.parent_env.and_then(|pe| pe.get_var(name)).or_else(|| self.env.get(name))
+        println!("looking up {name} in env#{self:p}");
+        self.env.get(name).or_else(|| self.parent_env.and_then(|pe| {
+            println!("looking up {name} in parent env#{pe:p}");
+            pe.get_var(name)
+        }))
     }
 
     fn insert_var(&mut self, name: impl ToString, var: impl Variable + 'static) {
@@ -376,7 +407,7 @@ impl AstNode {
                     },
                     Some(AstNode::Symbol(s)) if s == "lambda" => {
                         let args = l.get(1).ok_or(Error::EvalError(format!("no args for lambda")))?;
-                        let body = l.get(2).ok_or(Error::EvalError(format!("no body for lambda")))?;
+                        let body: Vec<_> = l[2..].iter().map(|n| n.to_owned()).collect();
 
                         let args = args.to_owned().try_to_list().map_err(|n| Error::EvalError(format!("not a list: {n:?}")))?;
 
@@ -387,7 +418,7 @@ impl AstNode {
 
                         let args = args?;
 
-                        return Ok(Value::Lambda(args, Box::new(body.clone())));
+                        return Ok(Value::Lambda(args, body));
                     }
                     Some(AstNode::Symbol(s)) => {
                         let mut args: Vec<Value> = Vec::new();
@@ -409,7 +440,7 @@ impl AstNode {
             AstNode::Symbol(s) => {
                 println!("Symboling {s:?}");
                 let var = env.get_var(&s).ok_or(Error::EvalError(format!("symbol not found: {s:?}")))?;
-                var.eval(&env, Vec::new())
+                Ok(var.val().unwrap_or_else(|| Value::SymbolRef(s.clone())))
             },
             AstNode::Value(v) => {
                 println!("Valuing {v:?}");
