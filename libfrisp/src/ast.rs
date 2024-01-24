@@ -1,6 +1,6 @@
-use std::{fmt::{Display}, collections::HashMap, rc::Rc};
+use std::{fmt::Display, collections::HashMap, rc::Rc};
 
-use crate::{token::{TokenStream, Token}, Error};
+use crate::{token::{TokenStream, Token}, Error, functions::*};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -35,6 +35,22 @@ impl Value {
 
     pub fn string<T: ToString>(v: T) -> Value {
         Value::String(v.to_string())
+    }
+
+    pub fn as_list(&self) -> Option<&Vec<Value>> {
+        if let Value::List(list) = self {
+            Some(list)
+        } else {
+            None
+        }
+    }
+
+    pub fn to_list(self) -> Option<Vec<Value>> {
+        if let Value::List(list) = self {
+            Some(list)
+        } else {
+            None
+        }
     }
 
 }
@@ -237,85 +253,6 @@ impl Variable for ConstVal {
     }
 }
 
-
-pub struct Mul;
-
-impl Variable for Mul {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
-        if args.len() != 2 {
-            return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
-        }
-        match (&args[0], &args[1]) {
-            (Value::Integer(v1), Value::Integer(v2)) => Ok(Value::Integer(v1 * v2)),
-            (Value::Integer(v1), Value::Float(v2)) => Ok(Value::Float(*v1 as f64 * v2)),
-            (Value::Float(v1), Value::Integer(v2)) => Ok(Value::Float(v1 * *v2 as f64)),
-            (Value::Float(v1), Value::Float(v2)) => Ok(Value::Float(v1 * v2)),
-            (v1, v2) => Err(Error::VarEvalError(format!("cannot add {v1:?} and {v2:?}"))),
-        }
-    }
-}
-
-pub struct Add;
-
-impl Variable for Add {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
-        if args.len() != 2 {
-            return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
-        }
-
-        match (&args[0], &args[1]) {
-            (Value::Integer(v1), Value::Integer(v2)) => Ok(Value::Integer(v1 + v2)),
-            (Value::Integer(v1), Value::Float(v2)) => Ok(Value::Float(*v1 as f64 + v2)),
-            (Value::Float(v1), Value::Integer(v2)) => Ok(Value::Float(v1 + *v2 as f64)),
-            (Value::Float(v1), Value::Float(v2)) => Ok(Value::Float(v1 + v2)),
-            (v1, v2) => Err(Error::VarEvalError(format!("cannot add {v1:?} and {v2:?}"))),
-        }
-    }
-}
-
-pub struct Eq;
-
-impl Variable for Eq {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
-        if args.len() != 2 {
-            return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
-        }
-        Ok(Value::bool(&args[0] == &args[1]))
-    }
-}
-
-
-pub struct Begin;
-
-impl Variable for Begin {
-    fn eval(&self, _env: &Environment, mut args: Vec<Value>) -> Result<Value, Error> {
-        if let Some(v) = args.last_mut() {
-            Ok(std::mem::take(v))
-        } else {
-            Ok(Value::Unit)
-        }
-    }
-}
-
-pub struct DebugPrint;
-
-impl Variable for DebugPrint {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
-        for (i, arg) in args.iter().enumerate() {
-            println!("{i}: {arg:?}");
-        }
-        Ok(Value::Unit)
-    }
-}
-
-pub struct MkList;
-
-impl Variable for MkList {
-    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
-        Ok(Value::List(args))
-    }
-}
-
 pub trait Env {
     fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>>;
 
@@ -349,6 +286,9 @@ impl<'a> Environment<'a> {
         env.insert("pi".to_owned(), Rc::new(ConstVal(Value::Float(std::f64::consts::PI))));
         env.insert("debug".to_owned(), Rc::new(DebugPrint));
         env.insert("list".to_owned(), Rc::new(MkList));
+        env.insert("car".to_owned(), Rc::new(Car));
+        env.insert("cdr".to_owned(), Rc::new(Cdr));
+        env.insert("cons".to_owned(), Rc::new(Cons));
         Environment { env, parent_env: None }
     }
 
