@@ -218,6 +218,7 @@ impl Variable for ConstVal {
                 let mut local_env = env.sub_env();
 
                 for (name, value) in vars.iter().zip(args.into_iter()) {
+                    #[cfg(feature = "log")]
                     println!("local env setting {name} to {value}");
                     local_env.insert_var(name.clone(), ConstVal(value));
                 }
@@ -280,8 +281,10 @@ impl<'a> Environment<'a> {
     pub fn with_default_content() -> Environment<'a> {
         let mut env: HashMap<String, Rc<dyn Variable>> = HashMap::new();
         env.insert("add".to_owned(), Rc::new(Add));
+        env.insert("sub".to_owned(), Rc::new(Sub));
         env.insert("mul".to_owned(), Rc::new(Mul));
         env.insert("eq".to_owned(), Rc::new(Eq));
+        env.insert("lt".to_owned(), Rc::new(Lt));
         env.insert("begin".to_owned(), Rc::new(Begin));
         env.insert("pi".to_owned(), Rc::new(ConstVal(Value::Float(std::f64::consts::PI))));
         env.insert("debug".to_owned(), Rc::new(DebugPrint));
@@ -300,8 +303,10 @@ impl<'a> Environment<'a> {
 
 impl<'a> Env for Environment<'a> {
     fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>> {
+        #[cfg(feature = "log")]
         println!("looking up {name} in env#{self:p}");
         self.env.get(name).or_else(|| self.parent_env.and_then(|pe| {
+            #[cfg(feature = "log")]
             println!("looking up {name} in parent env#{pe:p}");
             pe.get_var(name)
         }))
@@ -317,6 +322,7 @@ impl AstNode {
     pub fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
         match self {
             AstNode::List(l) => {
+                #[cfg(feature = "log")]
                 println!("evaluating {:?}", l.get(0));
 
                 match l.get(0) {
@@ -338,6 +344,7 @@ impl AstNode {
 
                         if let AstNode::Symbol(sym) = symbol {
                             let value = val.eval(env)?;
+                            #[cfg(feature = "log")]
                             println!("defined {sym} to be {value:?}");
                             env.insert_var(sym, ConstVal(value));
                         }
@@ -369,6 +376,7 @@ impl AstNode {
 
                         let var = env.get_var(s).ok_or(Error::EvalError(format!("proc not found: {s}")))?;
                         let value = var.eval(&env, args);
+                        #[cfg(feature = "log")]
                         println!("evaluated {s} to {value:?}");
                         value
                     }
@@ -378,11 +386,13 @@ impl AstNode {
                 }
             },
             AstNode::Symbol(s) => {
+                #[cfg(feature = "log")]
                 println!("Symboling {s:?}");
                 let var = env.get_var(&s).ok_or(Error::EvalError(format!("symbol not found: {s:?}")))?;
                 Ok(var.val().unwrap_or_else(|| Value::SymbolRef(s.clone())))
             },
             AstNode::Value(v) => {
+                #[cfg(feature = "log")]
                 println!("Valuing {v:?}");
                 Ok(v.clone())
             },

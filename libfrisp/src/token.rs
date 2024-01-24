@@ -60,7 +60,7 @@ where I: Iterator<Item = char> {
                     }
                     return Some(Token::Error("EOF while reading string".to_string()));
                 },
-                c if c.is_ascii_digit() => {
+                c if c == '-' || c.is_ascii_digit() => {
                     let mut is_float = false;
 
                     let mut buf = String::new();

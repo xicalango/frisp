@@ -35,6 +35,25 @@ impl Variable for Add {
     }
 }
 
+pub struct Sub;
+
+impl Variable for Sub {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        if args.len() != 2 {
+            return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
+        }
+
+        match (&args[0], &args[1]) {
+            (Value::Integer(v1), Value::Integer(v2)) => Ok(Value::Integer(v1 - v2)),
+            (Value::Integer(v1), Value::Float(v2)) => Ok(Value::Float(*v1 as f64 - v2)),
+            (Value::Float(v1), Value::Integer(v2)) => Ok(Value::Float(v1 - *v2 as f64)),
+            (Value::Float(v1), Value::Float(v2)) => Ok(Value::Float(v1 - v2)),
+            (v1, v2) => Err(Error::VarEvalError(format!("cannot add {v1:?} and {v2:?}"))),
+        }
+    }
+}
+
+
 pub struct Eq;
 
 impl Variable for Eq {
@@ -46,6 +65,19 @@ impl Variable for Eq {
     }
 }
 
+pub struct Lt;
+
+impl Variable for Lt {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        if args.len() != 2 {
+            return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
+        }
+        match (&args[0], &args[1]) {
+            (Value::Integer(v1), Value::Integer(v2)) => Ok(Value::bool(v1 < v2)),
+            e => Err(Error::VarEvalError(format!("cannot lt {e:?}")))
+        }
+    }
+}
 
 pub struct Begin;
 
