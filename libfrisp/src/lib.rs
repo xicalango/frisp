@@ -49,3 +49,28 @@ pub fn run_with_env(script: &str, env: &mut Environment) -> Result<Value, Error>
     let ast_node = AstNode::try_from(tokens)?;
     ast_node.eval(env)
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{env::Environment, run_with_env, value::Value};
+
+
+    #[test]
+    fn test_fib() {
+        let mut env = Environment::with_default_content();
+        let fib_code = include_str!("../../res/fib.lisp");
+
+        assert_eq!(Value::Unit, run_with_env(fib_code, &mut env).unwrap());
+        assert_eq!(Value::int(55isize), run_with_env(&format!("(fib 10)"), &mut env).unwrap());
+    }
+
+    #[test]
+    fn test_gcd() {
+        let mut env = Environment::with_default_content();
+        let fib_code = include_str!("../../res/gcd.lisp");
+
+        assert_eq!(Value::Unit, run_with_env(fib_code, &mut env).unwrap());
+        assert_eq!(Value::int(3isize), run_with_env(&format!("(gcd 1098 1173)"), &mut env).unwrap());
+    }
+
+}
