@@ -68,19 +68,10 @@ where I: Iterator<Item = char> {
 
                     while let Some(c) = self.iter.next() {
                         if c.is_whitespace() {
-                            if is_float {
-                                return Some(Token::Float(buf.parse().unwrap()));
-                            } else {
-                                return Some(Token::Integer(buf.parse().unwrap()));
-                            }
+                            break;
                         } else if c == ')' {
                             self.next_token.replace(Token::ListEnd);
-
-                            if is_float {
-                                return Some(Token::Float(buf.parse().unwrap()));
-                            } else {
-                                return Some(Token::Integer(buf.parse().unwrap()));
-                            }
+                            break;
                          } else if c.is_ascii_digit() {
                             buf.push(c);
                         } else if c == '.' {
@@ -102,13 +93,13 @@ where I: Iterator<Item = char> {
                     buf.push(c);
                     while let Some(c) = self.iter.next() {
                         if c.is_whitespace() {
-                            return Some(Token::Symbol(buf));
+                            break;
                         } else if c == '(' {
                             self.next_token.replace(Token::ListStart);
-                            return Some(Token::Symbol(buf));
+                            break;
                         } else if c == ')' {
                             self.next_token.replace(Token::ListEnd);
-                            return Some(Token::Symbol(buf));
+                            break;
                         } else if c.is_ascii_alphanumeric() {
                             buf.push(c)
                         } else {
@@ -118,7 +109,7 @@ where I: Iterator<Item = char> {
 
                     return Some(Token::Symbol(buf));
                 }
-                e => return Some(Token::Error(format!("eheh {e:?}"))),
+                e => return Some(Token::Error(format!("invalid token: {e:?}"))),
             }
         }
         return None;
