@@ -161,6 +161,7 @@ impl AstNode {
 
                         return Ok(Value::Lambda(args, body));
                     },
+                    #[cfg(feature = "eval")]
                     Some(AstNode::Symbol(s)) if s == "eval" => {
                         let script = l.get(1).ok_or(Error::EvalError(format!("no args for eval")))?;
                         let script_val = script.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
