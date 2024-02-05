@@ -6,10 +6,22 @@ fn main() {
 
     let mut env = Environment::with_default_content();
 
-    for line in stdin().lines() {
-        let line = line.unwrap();
+    for arg in std::env::args().skip(1) {
+        let script = format!("(include {arg:?})");
+        let tokens = TokenStream::new(script.chars());
+        AstNode::try_from(tokens).unwrap().eval(&mut env).unwrap();
+    }
 
-        let tokens = TokenStream::new(line.chars());
+    loop {
+        let mut input = String::new();
+
+        let count = stdin().read_line(&mut input).unwrap();
+
+        if count == 0 {
+            break;
+        }
+
+        let tokens = TokenStream::new(input.chars());
         match AstNode::try_from(tokens) {
             Ok(node) => {
                 match node.eval(&mut env) {
@@ -20,5 +32,8 @@ fn main() {
             },
             Err(e) => println!("Error: {e:?}"),
         }
+
+
     }
+
 }

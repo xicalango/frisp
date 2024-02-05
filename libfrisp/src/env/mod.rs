@@ -5,6 +5,7 @@ use crate::value::{ConstVal, Value, Variable};
 pub mod arithmetic;
 pub mod list;
 pub mod misc;
+pub mod io;
 
 pub trait Env {
     fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>>;
@@ -39,13 +40,20 @@ impl<'a> Environment<'a> {
         env.insert("mod".to_owned(), Rc::new(arithmetic::Mod));
         env.insert("eq".to_owned(), Rc::new(arithmetic::Eq));
         env.insert("lt".to_owned(), Rc::new(arithmetic::Lt));
-        env.insert("begin".to_owned(), Rc::new(list::Begin));
+
         env.insert("pi".to_owned(), Rc::new(ConstVal::from(Value::Float(std::f64::consts::PI))));
-        env.insert("debug".to_owned(), Rc::new(misc::DebugPrint));
+        
+        env.insert("begin".to_owned(), Rc::new(list::Begin));
         env.insert("list".to_owned(), Rc::new(list::MkList));
         env.insert("car".to_owned(), Rc::new(list::Car));
         env.insert("cdr".to_owned(), Rc::new(list::Cdr));
         env.insert("cons".to_owned(), Rc::new(list::Cons));
+
+        env.insert("readLine".to_owned(), Rc::new(io::ReadLine));
+        env.insert("print".to_owned(), Rc::new(io::Print));
+        env.insert("parseInt".to_owned(), Rc::new(io::ParseInt));
+
+        env.insert("debug".to_owned(), Rc::new(misc::DebugPrint));
         Environment { env, parent_env: None }
     }
 
