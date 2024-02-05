@@ -56,6 +56,15 @@ where I: Iterator<Item = char> {
                             return Some(Token::String(buf));
                         }
 
+                        if c == '\\' {
+                            if let Some(next) = self.iter.next() {
+                                buf.push(next);
+                                continue;
+                            } else {
+                                break;
+                            }
+                        }
+
                         buf.push(c);
                     }
                     return Some(Token::Error("EOF while reading string".to_string()));
