@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 pub mod token;
 pub mod ast;
-pub mod functions;
+pub mod env;
 
 #[derive(Debug)]
 pub enum Error {

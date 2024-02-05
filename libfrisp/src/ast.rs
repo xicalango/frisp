@@ -1,6 +1,7 @@
-use std::{fmt::Display, collections::HashMap, rc::Rc};
 
-use crate::{token::{TokenStream, Token}, Error, functions::*};
+use std::fmt::Display;
+
+use crate::{env::{Env, Environment}, token::{Token, TokenStream}, Error};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -206,6 +207,20 @@ pub trait Variable {
 
 pub struct ConstVal(Value);
 
+impl ConstVal {
+
+    pub fn wrap(value: Value) -> ConstVal {
+        ConstVal(value)
+    }
+    
+}
+
+impl From<Value> for ConstVal {
+    fn from(value: Value) -> Self {
+        ConstVal::wrap(value)
+    }
+}
+
 impl Variable for ConstVal {
     fn eval(&self, env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
         let ConstVal(v) = self;
@@ -251,69 +266,6 @@ impl Variable for ConstVal {
         let ConstVal(v) = self;
 
         Some(v.clone())
-    }
-}
-
-pub trait Env {
-    fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>>;
-
-    fn insert_var(&mut self, name: impl ToString, var: impl Variable + 'static);
-}
-
-#[derive(Clone)]
-pub struct Environment<'a> {
-    env: HashMap<String, Rc<dyn Variable>>,
-    parent_env: Option<&'a Environment<'a>>
-}
-
-impl Default for Environment<'_> {
-    fn default() -> Self {
-        Environment::empty()
-    }
-}
-
-impl<'a> Environment<'a> {
-
-    pub fn empty() -> Environment<'a> {
-        Environment { env: Default::default(), parent_env: None }
-    }
-
-    pub fn with_default_content() -> Environment<'a> {
-        let mut env: HashMap<String, Rc<dyn Variable>> = HashMap::new();
-        env.insert("add".to_owned(), Rc::new(Add));
-        env.insert("sub".to_owned(), Rc::new(Sub));
-        env.insert("mul".to_owned(), Rc::new(Mul));
-        env.insert("eq".to_owned(), Rc::new(Eq));
-        env.insert("lt".to_owned(), Rc::new(Lt));
-        env.insert("begin".to_owned(), Rc::new(Begin));
-        env.insert("pi".to_owned(), Rc::new(ConstVal(Value::Float(std::f64::consts::PI))));
-        env.insert("debug".to_owned(), Rc::new(DebugPrint));
-        env.insert("list".to_owned(), Rc::new(MkList));
-        env.insert("car".to_owned(), Rc::new(Car));
-        env.insert("cdr".to_owned(), Rc::new(Cdr));
-        env.insert("cons".to_owned(), Rc::new(Cons));
-        Environment { env, parent_env: None }
-    }
-
-    pub fn sub_env(&'a self) -> Environment<'a> {
-        Environment { env: Default::default(), parent_env: Some(self) }
-    }
-
-}
-
-impl<'a> Env for Environment<'a> {
-    fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>> {
-        #[cfg(feature = "log")]
-        println!("looking up {name} in env#{self:p}");
-        self.env.get(name).or_else(|| self.parent_env.and_then(|pe| {
-            #[cfg(feature = "log")]
-            println!("looking up {name} in parent env#{pe:p}");
-            pe.get_var(name)
-        }))
-    }
-
-    fn insert_var(&mut self, name: impl ToString, var: impl Variable + 'static) {
-        self.env.insert(name.to_string(), Rc::new(var));
     }
 }
 

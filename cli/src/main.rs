@@ -1,9 +1,6 @@
 use std::io::stdin;
 
-use libfrisp::{token::TokenStream, ast::{AstNode, Environment, Value}};
-
-
-
+use libfrisp::{ast::{AstNode, Value}, env::Environment, token::TokenStream};
 
 fn main() {
 
