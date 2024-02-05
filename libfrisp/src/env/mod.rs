@@ -33,6 +33,7 @@ impl<'a> Environment<'a> {
     pub fn with_default_content() -> Environment<'a> {
         let mut env: HashMap<String, Rc<dyn Variable>> = HashMap::new();
         env.insert("add".to_owned(), Rc::new(arithmetic::Add));
+        env.insert("sub".to_owned(), Rc::new(arithmetic::Sub));
         env.insert("mul".to_owned(), Rc::new(arithmetic::Mul));
         env.insert("div".to_owned(), Rc::new(arithmetic::Div));
         env.insert("mod".to_owned(), Rc::new(arithmetic::Mod));
