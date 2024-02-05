@@ -80,6 +80,7 @@ impl Variable for Eq {
         if args.len() != 2 {
             return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
         }
+        #[cfg(feature = "log")]
         println!("is {:?} == {:?}?", &args[0], &args[1]);
         Ok(Value::bool(&args[0] == &args[1]))
     }
