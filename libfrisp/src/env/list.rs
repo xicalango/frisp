@@ -72,3 +72,37 @@ impl Variable for Cons {
         Ok(Value::List(l))
     }
 }
+
+pub struct Length;
+
+impl Variable for Length {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        if args.len() != 1 {
+            return Err(Error::VarEvalArgNumError { expected: 1, actual: args.len() });
+        }
+        
+        let len = match &args[0] {
+            Value::Unit => 0,
+            Value::String(s) => s.len(),
+            Value::List(l) => l.len(),
+            v => return Err(Error::VarEvalError(format!("{v:?} does not have a length"))),
+        };
+
+        Ok(Value::int(len as isize))
+    }
+}
+
+pub struct Endp;
+
+impl Variable for Endp {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        if args.len() != 1 {
+            return Err(Error::VarEvalArgNumError { expected: 1, actual: args.len() });
+        }
+
+        match &args[0] {
+            Value::List(list) => Ok(Value::bool(list.is_empty())),
+            v => Err(Error::VarEvalError(format!("not a list: {v:?}"))),
+        } 
+    }
+}

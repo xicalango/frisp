@@ -49,6 +49,8 @@ impl<'a> Environment<'a> {
         env.insert_var("car", list::Car);
         env.insert_var("cdr", list::Cdr);
         env.insert_var("cons", list::Cons);
+        env.insert_var("length", list::Length);
+        env.insert_var("endp", list::Endp);
 
         env.insert_var("readLine", io::ReadLine);
         env.insert_var("print", io::Print);
