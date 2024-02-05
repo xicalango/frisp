@@ -1,4 +1,4 @@
-(define gcdui (lambda () 
+(define gcd-ui (lambda () 
     (print "Please enter first number:")
     (define a (parseInt (readLine)))
 

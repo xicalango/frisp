@@ -17,6 +17,14 @@ pub struct TokenStream<I> {
     next_token: Option<Token>,
 }
 
+pub fn valid_symbol_char(c: char) -> bool {
+    match c {
+        '_' | '.' | '-' => true,
+        c if c.is_ascii_alphanumeric() => true,
+        _ => false,
+    }
+}
+
 impl<I> TokenStream<I> {
 
     pub fn new(iter: I) -> TokenStream<I> {
@@ -34,6 +42,7 @@ where I: Debug + Iterator<Item = char> {
         f.debug_struct("TokenStream").field("iter", &self.iter).finish()
     }
 }
+
 
 impl<I> Iterator for TokenStream<I> 
 where I: Iterator<Item = char> {
@@ -109,7 +118,7 @@ where I: Iterator<Item = char> {
                         } else if c == ')' {
                             self.next_token.replace(Token::ListEnd);
                             break;
-                        } else if c.is_ascii_alphanumeric() {
+                        } else if valid_symbol_char(c) {
                             buf.push(c)
                         } else {
                             return Some(Token::Error(format!("invalid char sym: {c}")));
