@@ -1,4 +1,6 @@
 
+use std::fs::read_to_string;
+
 use crate::{env::{Env, Environment}, token::{Token, TokenStream}, value::{ConstVal, Value}, Error};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -162,7 +164,7 @@ impl AstNode {
                         let script = l.get(1).ok_or(Error::EvalError(format!("no args for eval")))?;
                         let script_val = script.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
                         let script_str = script_val.as_str().ok_or(Error::EvalError(format!("{script_val:?} is not a string")))?;
-                        
+
                         let tokens = TokenStream::new(script_str.chars());
                         let ast_node = AstNode::try_from(tokens)?;
                         let res = ast_node.eval(env)?;
@@ -170,7 +172,20 @@ impl AstNode {
                         #[cfg(feature = "log")]
                         println!("evaluated {script_str:?} to {res:?}");
                         Ok(res)
-                    }
+                    },
+                    #[cfg(feature = "include")]
+                    Some(AstNode::Symbol(s)) if s == "include" => {
+                        let path = l.get(1).ok_or(Error::EvalError(format!("no args for include")))?;
+                        let path_val = path.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
+                        let path_str = path_val.as_str().ok_or(Error::EvalError(format!("{path_val:?} is not a string")))?;
+
+                        let file_contents = read_to_string(path_str).map_err(|e| Error::EvalError(format!("Error when reading from file {path_str:?}: {e}")))?;
+
+                        let tokens = TokenStream::new(file_contents.chars());
+                        let ast_node = AstNode::try_from(tokens)?;
+                        ast_node.eval(env)?;
+                        Ok(Value::Unit)
+                    },
                     Some(AstNode::Symbol(s)) => {
                         let mut args: Vec<Value> = Vec::new();
 

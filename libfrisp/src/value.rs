@@ -132,6 +132,9 @@ impl Variable for ConstVal {
                 }
                 let mut local_env = env.sub_env();
 
+                #[cfg(feature = "log")]
+                println!("created sub_env#{:p} from env#{env:p}", &local_env);
+
                 for (name, value) in vars.iter().zip(args.into_iter()) {
                     #[cfg(feature = "log")]
                     println!("local env setting {name} to {value}");
