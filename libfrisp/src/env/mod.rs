@@ -59,8 +59,6 @@ impl<'a> Env for Environment<'a> {
         #[cfg(feature = "log")]
         println!("looking up {name} in env#{self:p}");
         self.env.get(name).or_else(|| self.parent_env.and_then(|pe| {
-            #[cfg(feature = "log")]
-            println!("looking up {name} in parent env#{pe:p}");
             pe.get_var(name)
         }))
     }

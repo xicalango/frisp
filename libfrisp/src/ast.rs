@@ -157,6 +157,19 @@ impl AstNode {
                         let args = args?;
 
                         return Ok(Value::Lambda(args, body));
+                    },
+                    Some(AstNode::Symbol(s)) if s == "eval" => {
+                        let script = l.get(1).ok_or(Error::EvalError(format!("no args for eval")))?;
+                        let script_val = script.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
+                        let script_str = script_val.as_str().ok_or(Error::EvalError(format!("{script_val:?} is not a string")))?;
+                        
+                        let tokens = TokenStream::new(script_str.chars());
+                        let ast_node = AstNode::try_from(tokens)?;
+                        let res = ast_node.eval(env)?;
+
+                        #[cfg(feature = "log")]
+                        println!("evaluated {script_str:?} to {res:?}");
+                        Ok(res)
                     }
                     Some(AstNode::Symbol(s)) => {
                         let mut args: Vec<Value> = Vec::new();

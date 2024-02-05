@@ -38,6 +38,14 @@ impl Value {
         Value::String(v.to_string())
     }
 
+    pub fn as_str(&self) -> Option<&str> {
+        if let Value::String(s) = self {
+            Some(s.as_str())
+        } else {
+            None
+        }
+    }
+
     pub fn as_list(&self) -> Option<&Vec<Value>> {
         if let Value::List(list) = self {
             Some(list)
