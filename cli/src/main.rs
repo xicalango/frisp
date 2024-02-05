@@ -1,6 +1,6 @@
 use std::io::stdin;
 
-use libfrisp::{ast::AstNode, env::Environment, token::TokenStream, value::Value};
+use libfrisp::{env::Environment, value::Value};
 
 fn main() {
 
@@ -8,8 +8,7 @@ fn main() {
 
     for arg in std::env::args().skip(1) {
         let script = format!("(include {arg:?})");
-        let tokens = TokenStream::new(script.chars());
-        AstNode::try_from(tokens).unwrap().eval(&mut env).unwrap();
+        libfrisp::run_with_env(&script, &mut env).unwrap();
     }
 
     loop {
@@ -21,19 +20,11 @@ fn main() {
             break;
         }
 
-        let tokens = TokenStream::new(input.chars());
-        match AstNode::try_from(tokens) {
-            Ok(node) => {
-                match node.eval(&mut env) {
-                    Ok(Value::Unit) => {},
-                    Ok(v) => println!("{v}"),
-                    Err(e) => println!("error evaluating: {e:?}"),
-                }
-            },
-            Err(e) => println!("Error: {e:?}"),
+        match libfrisp::run_with_env(&input, &mut env) {
+            Ok(Value::Unit) => {},
+            Ok(v) => println!("{v}"),
+            Err(e) => println!("{e}"),
         }
-
-
     }
 
 }

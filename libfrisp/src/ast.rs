@@ -166,9 +166,7 @@ impl AstNode {
                         let script_val = script.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
                         let script_str = script_val.as_str().ok_or(Error::EvalError(format!("{script_val:?} is not a string")))?;
 
-                        let tokens = TokenStream::new(script_str.chars());
-                        let ast_node = AstNode::try_from(tokens)?;
-                        let res = ast_node.eval(env)?;
+                        let res = crate::run_with_env(script_str, env)?;
 
                         #[cfg(feature = "log")]
                         println!("evaluated {script_str:?} to {res:?}");
@@ -182,9 +180,7 @@ impl AstNode {
 
                         let file_contents = read_to_string(path_str).map_err(|e| Error::EvalError(format!("Error when reading from file {path_str:?}: {e}")))?;
 
-                        let tokens = TokenStream::new(file_contents.chars());
-                        let ast_node = AstNode::try_from(tokens)?;
-                        ast_node.eval(env)?;
+                        crate::run_with_env(&file_contents, env)?;
                         Ok(Value::Unit)
                     },
                     Some(AstNode::Symbol(s)) => {

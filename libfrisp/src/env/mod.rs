@@ -32,29 +32,31 @@ impl<'a> Environment<'a> {
     }
 
     pub fn with_default_content() -> Environment<'a> {
-        let mut env: HashMap<String, Rc<dyn Variable>> = HashMap::new();
-        env.insert("add".to_owned(), Rc::new(arithmetic::Add));
-        env.insert("sub".to_owned(), Rc::new(arithmetic::Sub));
-        env.insert("mul".to_owned(), Rc::new(arithmetic::Mul));
-        env.insert("div".to_owned(), Rc::new(arithmetic::Div));
-        env.insert("mod".to_owned(), Rc::new(arithmetic::Mod));
-        env.insert("eq".to_owned(), Rc::new(arithmetic::Eq));
-        env.insert("lt".to_owned(), Rc::new(arithmetic::Lt));
+        let mut env = Self::default();
 
-        env.insert("pi".to_owned(), Rc::new(ConstVal::from(Value::Float(std::f64::consts::PI))));
+        env.insert_var("add", arithmetic::Add);
+        env.insert_var("sub", arithmetic::Sub);
+        env.insert_var("mul", arithmetic::Mul);
+        env.insert_var("div", arithmetic::Div);
+        env.insert_var("mod", arithmetic::Mod);
+        env.insert_var("eq", arithmetic::Eq);
+        env.insert_var("lt", arithmetic::Lt);
+
+        env.insert_var("pi", ConstVal::from(Value::Float(std::f64::consts::PI)));
         
-        env.insert("begin".to_owned(), Rc::new(list::Begin));
-        env.insert("list".to_owned(), Rc::new(list::MkList));
-        env.insert("car".to_owned(), Rc::new(list::Car));
-        env.insert("cdr".to_owned(), Rc::new(list::Cdr));
-        env.insert("cons".to_owned(), Rc::new(list::Cons));
+        env.insert_var("begin", list::Begin);
+        env.insert_var("list", list::MkList);
+        env.insert_var("car", list::Car);
+        env.insert_var("cdr", list::Cdr);
+        env.insert_var("cons", list::Cons);
 
-        env.insert("readLine".to_owned(), Rc::new(io::ReadLine));
-        env.insert("print".to_owned(), Rc::new(io::Print));
-        env.insert("parseInt".to_owned(), Rc::new(io::ParseInt));
+        env.insert_var("readLine", io::ReadLine);
+        env.insert_var("print", io::Print);
+        env.insert_var("parseInt", io::ParseInt);
 
-        env.insert("debug".to_owned(), Rc::new(misc::DebugPrint));
-        Environment { env, parent_env: None }
+        env.insert_var("debug", misc::DebugPrint);
+        
+        env
     }
 
     pub fn sub_env(&'a self) -> Environment<'a> {
