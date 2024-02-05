@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+pub mod value;
 pub mod token;
 pub mod ast;
 pub mod env;

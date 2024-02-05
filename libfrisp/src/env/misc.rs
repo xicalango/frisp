@@ -1,5 +1,5 @@
 
-use crate::{ast::{Value, Variable}, Error};
+use crate::{value::{Variable, Value}, Error};
 
 use super::Environment;
 
