@@ -34,6 +34,8 @@ impl<'a> Environment<'a> {
         let mut env: HashMap<String, Rc<dyn Variable>> = HashMap::new();
         env.insert("add".to_owned(), Rc::new(arithmetic::Add));
         env.insert("mul".to_owned(), Rc::new(arithmetic::Mul));
+        env.insert("div".to_owned(), Rc::new(arithmetic::Div));
+        env.insert("mod".to_owned(), Rc::new(arithmetic::Mod));
         env.insert("eq".to_owned(), Rc::new(arithmetic::Eq));
         env.insert("lt".to_owned(), Rc::new(arithmetic::Lt));
         env.insert("begin".to_owned(), Rc::new(list::Begin));

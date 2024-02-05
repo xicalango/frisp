@@ -177,10 +177,11 @@ impl AstNode {
                 }
             },
             AstNode::Symbol(s) => {
-                #[cfg(feature = "log")]
-                println!("Symboling {s:?}");
                 let var = env.get_var(&s).ok_or(Error::EvalError(format!("symbol not found: {s:?}")))?;
-                Ok(var.val().unwrap_or_else(|| Value::SymbolRef(s.clone())))
+                let res = Ok(var.val().unwrap_or_else(|| Value::SymbolRef(s.clone())));
+                #[cfg(feature = "log")]
+                println!("Symboling {s:?} to {res:?}");
+                res
             },
             AstNode::Value(v) => {
                 #[cfg(feature = "log")]
