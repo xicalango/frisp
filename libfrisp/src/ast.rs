@@ -33,6 +33,17 @@ impl AstNode {
         }
     }
 
+    pub fn parse_raw_symbol(raw_symbol: &str) -> AstNode {
+        if let Ok(int_value) = raw_symbol.parse::<isize>() {
+            return AstNode::Value(Value::Integer(int_value));
+        }
+
+        if let Ok(float_value) = raw_symbol.parse::<f64>() {
+            return AstNode::Value(Value::Float(float_value));
+        }
+        AstNode::Symbol(raw_symbol.to_string())
+    }
+
 }
 
 impl Default for AstNode {
@@ -69,24 +80,8 @@ where I: Iterator<Item = char> {
                         None => return Ok(AstNode::List(list))
                     }
                 },
-                Token::Integer(i) => {
-                    let value = AstNode::Value(Value::Integer(i));
-                    if let Some(l) = current_list.as_mut() {
-                        l.push(value);
-                    } else {
-                        return Ok(value);
-                    }
-                },
-                Token::Float(i) => {
-                    let value = AstNode::Value(Value::Float(i));
-                    if let Some(l) = current_list.as_mut() {
-                        l.push(value);
-                    } else {
-                        return Ok(value);
-                    }
-                },
                 Token::Symbol(s) => {
-                    let value = AstNode::Symbol(s);
+                    let value = AstNode::parse_raw_symbol(&s);
                     if let Some(l) = current_list.as_mut() {
                         l.push(value);
                     } else {

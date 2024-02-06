@@ -5,10 +5,8 @@ use std::fmt::Debug;
 pub enum Token {
     ListStart,
     ListEnd,
-    Integer(isize),
-    Float(f64),
-    Symbol(String),
     String(String),
+    Symbol(String),
     Error(String),
 }
 
@@ -17,11 +15,18 @@ pub struct TokenStream<I> {
     next_token: Option<Token>,
 }
 
-pub fn valid_symbol_char(c: char) -> bool {
-    match c {
-        '_' | '.' | '-' => true,
-        c if c.is_ascii_alphanumeric() => true,
-        _ => false,
+pub trait FrispSymbolChar {
+    fn is_frisp_symbol(&self) -> bool;
+}
+
+impl FrispSymbolChar for char {
+    fn is_frisp_symbol(&self) -> bool {
+        match self {
+            '(' | ')' => false,
+            c if c.is_ascii_alphanumeric() => true,
+            c if c.is_ascii_punctuation() => true,
+            _ => false,
+        }
     }
 }
 
@@ -78,35 +83,7 @@ where I: Iterator<Item = char> {
                     }
                     return Some(Token::Error("EOF while reading string".to_string()));
                 },
-                c if c == '-' || c.is_ascii_digit() => {
-                    let mut is_float = false;
-
-                    let mut buf = String::new();
-                    buf.push(c);
-
-                    while let Some(c) = self.iter.next() {
-                        if c.is_whitespace() {
-                            break;
-                        } else if c == ')' {
-                            self.next_token.replace(Token::ListEnd);
-                            break;
-                         } else if c.is_ascii_digit() {
-                            buf.push(c);
-                        } else if c == '.' {
-                            is_float = true;
-                            buf.push(c);
-                        } else {
-                            return Some(Token::Error(format!("invalid digit: {c}")));
-                        }
-                    }
-
-                    if is_float {
-                        return Some(Token::Float(buf.parse().unwrap()));
-                    } else {
-                        return Some(Token::Integer(buf.parse().unwrap()));
-                    }
-                }
-                c if c.is_ascii_alphabetic() => {
+                c if c.is_frisp_symbol() => {
                     let mut buf = String::new();
                     buf.push(c);
                     while let Some(c) = self.iter.next() {
@@ -118,7 +95,7 @@ where I: Iterator<Item = char> {
                         } else if c == ')' {
                             self.next_token.replace(Token::ListEnd);
                             break;
-                        } else if valid_symbol_char(c) {
+                        } else if c.is_frisp_symbol() {
                             buf.push(c)
                         } else {
                             return Some(Token::Error(format!("invalid char sym: {c}")));

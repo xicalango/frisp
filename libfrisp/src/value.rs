@@ -1,7 +1,7 @@
 
 use std::fmt::Display;
 
-use crate::{ast::AstNode, env::{Env, Environment}, token::Token, Error};
+use crate::{ast::AstNode, env::{Env, Environment}, Error};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -80,19 +80,6 @@ impl Display for Value {
                 write!(f, "(lambda {args:?} {body:?})")
             },
             Value::SymbolRef(v) => write!(f, "@{v}"),
-        }
-    }
-}
-
-impl TryFrom<Token> for Value {
-    type Error = Error;
-
-    fn try_from(value: Token) -> Result<Self, Self::Error> {
-        match value {
-            Token::Integer(v) => Ok(Value::Integer(v)),
-            Token::Float(f) => Ok(Value::Float(f)),
-            Token::String(s) => Ok(Value::String(s)),
-            o => Err(Error::ParserError(format!("cannot make value from {o:?}"))),
         }
     }
 }
