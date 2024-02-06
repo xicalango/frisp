@@ -33,3 +33,10 @@
   )
 ))
 
+(define map (lambda (mapper l)
+    (if (endp l)
+        (list)
+        (cons (mapper (car l)) (map mapper (cdr l)))
+    )
+))
+
