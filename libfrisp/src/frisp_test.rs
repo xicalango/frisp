@@ -48,7 +48,7 @@ fn run_frisp_tests() {
         let file_name_val = entry.file_name();
         let file_name = file_name_val.to_string_lossy();
 
-        if !file_name.ends_with("test.lisp") {
+        if !file_name.ends_with(".test.lisp") {
             continue;
         }
 
@@ -58,7 +58,10 @@ fn run_frisp_tests() {
 
         crate::eval_file_with_env(entry.path(), &mut test_env).unwrap();
 
-        let tests: Vec<_> = test_env.local_vars().iter().filter(|e| e.starts_with("test-")).map(|n| n.to_string()).collect();
+        let tests: Vec<_> = test_env.local_vars().iter()
+                                    .filter(|e| e.starts_with("test-"))
+                                    .map(|n| n.to_string())
+                                    .collect();
 
         for test in tests {
             println!("running {test}");
