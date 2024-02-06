@@ -61,7 +61,7 @@ fn run_frisp_tests() {
         let tests: Vec<_> = test_env.local_vars().iter().filter(|e| e.starts_with("test-")).map(|n| n.to_string()).collect();
 
         for test in tests {
-            println!("running test {test}");
+            println!("running {test}");
             if let Err(e) = crate::run_with_env(&format!("({test})"), &mut test_env) {
                 panic!("test {file_name}/{test} failed: {e}")
             }
