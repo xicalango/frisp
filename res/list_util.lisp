@@ -49,3 +49,10 @@
         )
     )
 ))
+
+(define nth (lambda (n l)
+  (if (== n 0)
+    (car l)
+    (nth (- n 1) (cdr l))
+  )
+))
