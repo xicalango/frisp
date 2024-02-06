@@ -117,10 +117,10 @@ impl Variable for ConstVal {
                 if vars.len() != args.len() {
                     return Err(Error::VarEvalArgNumError { expected: vars.len(), actual: args.len() });
                 }
-                let mut local_env = env.sub_env();
+                let mut local_env = env.local_env();
 
                 #[cfg(feature = "log")]
-                println!("created sub_env#{:p} from env#{env:p}", &local_env);
+                println!("created local_env#{:p} from env#{env:p}", &local_env);
 
                 for (name, value) in vars.iter().zip(args.into_iter()) {
                     #[cfg(feature = "log")]

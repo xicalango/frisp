@@ -65,6 +65,10 @@ impl<'a> Environment<'a> {
         Environment { env: Default::default(), parent_env: Some(self) }
     }
 
+    pub fn local_env(&'a self) -> Environment<'a> {
+        Environment { env: Default::default(), parent_env: self.parent_env.or_else(|| Some(self)) }
+    }
+
 }
 
 impl<'a> Env for Environment<'a> {
