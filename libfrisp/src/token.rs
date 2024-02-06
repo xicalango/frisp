@@ -1,13 +1,14 @@
 
 use std::fmt::Debug;
 
+use crate::Error;
+
 #[derive(Debug)]
 pub enum Token {
     ListStart,
     ListEnd,
     String(String),
     Symbol(String),
-    Error(String),
 }
 
 pub struct TokenStream<I> {
@@ -51,23 +52,23 @@ where I: Debug + Iterator<Item = char> {
 
 impl<I> Iterator for TokenStream<I> 
 where I: Iterator<Item = char> {
-    type Item = Token;
+    type Item = Result<Token, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(t) = self.next_token.take() {
-            return Some(t);
+            return Some(Ok(t));
         }
 
         while let Some(c) = self.iter.next() {
             match c {
                 w if w.is_whitespace() => continue,
-                '(' => return Some(Token::ListStart),
-                ')' => return Some(Token::ListEnd),
+                '(' => return Some(Ok(Token::ListStart)),
+                ')' => return Some(Ok(Token::ListEnd)),
                 '"' => {
                     let mut buf = String::new();
                     while let Some(c) = self.iter.next() {
                         if c == '"' {
-                            return Some(Token::String(buf));
+                            return Some(Ok(Token::String(buf)));
                         }
 
                         if c == '\\' {
@@ -81,7 +82,7 @@ where I: Iterator<Item = char> {
 
                         buf.push(c);
                     }
-                    return Some(Token::Error("EOF while reading string".to_string()));
+                    return Some(Err(Error::TokenizerError("EOF while reading string".to_string())));
                 },
                 c if c.is_frisp_symbol() => {
                     let mut buf = String::new();
@@ -98,13 +99,13 @@ where I: Iterator<Item = char> {
                         } else if c.is_frisp_symbol() {
                             buf.push(c)
                         } else {
-                            return Some(Token::Error(format!("invalid char sym: {c}")));
+                            return Some(Err(Error::TokenizerError(format!("invalid char sym: {c}"))));
                         }
                     }
 
-                    return Some(Token::Symbol(buf));
+                    return Some(Ok(Token::Symbol(buf)));
                 }
-                e => return Some(Token::Error(format!("invalid token: {e:?}"))),
+                e => return Some(Err(Error::TokenizerError(format!("invalid token: {e:?}")))),
             }
         }
         return None;
