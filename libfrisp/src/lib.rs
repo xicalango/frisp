@@ -10,6 +10,9 @@ pub mod token;
 pub mod ast;
 pub mod env;
 
+#[cfg(test)]
+mod frisp_test;
+
 #[derive(Debug)]
 pub enum Error {
     TokenizerError(String),
