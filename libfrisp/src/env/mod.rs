@@ -34,13 +34,13 @@ impl<'a> Environment<'a> {
     pub fn with_default_content() -> Environment<'a> {
         let mut env = Self::default();
 
-        env.insert_var("add", arithmetic::Add);
-        env.insert_var("sub", arithmetic::Sub);
-        env.insert_var("mul", arithmetic::Mul);
-        env.insert_var("div", arithmetic::Div);
+        env.insert_var("+", arithmetic::Add);
+        env.insert_var("-", arithmetic::Sub);
+        env.insert_var("*", arithmetic::Mul);
+        env.insert_var("/", arithmetic::Div);
         env.insert_var("mod", arithmetic::Mod);
-        env.insert_var("eq", arithmetic::Eq);
-        env.insert_var("lt", arithmetic::Lt);
+        env.insert_var("==", arithmetic::Eq);
+        env.insert_var("<", arithmetic::Lt);
 
         env.insert_var("pi", ConstVal::from(Value::Float(std::f64::consts::PI)));
         
