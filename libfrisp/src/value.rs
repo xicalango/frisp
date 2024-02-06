@@ -144,8 +144,7 @@ impl Variable for Lambda {
         let mut last_value = None;
 
         for stmt in &self.body {
-            last_value = Some(stmt.eval(&mut local_env)
-                .map_err(|e| Error::VarEvalError(format!("eval error: {e}")))?)
+            last_value = Some(stmt.eval(&mut local_env)?)
         }
         
         last_value.ok_or(Error::VarEvalError(format!("no value")))
