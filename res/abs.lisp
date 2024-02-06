@@ -1,6 +1,6 @@
 (define abs (lambda (a)
-  (if (lt a 0)
-    (sub 0 a)
+  (if (< a 0)
+    (- 0 a)
     (a)
   )
 ))
