@@ -1,5 +1,5 @@
 
-use std::{fmt::Display, ops::{Add, Div, Mul, Sub}};
+use std::fmt::Display;
 
 use crate::{ast::AstNode, env::{Env, Environment}, Error};
 
@@ -68,6 +68,13 @@ impl Value {
             Err(Error::VarEvalError(e))
         } else {
             Ok(self)
+        }
+    }
+
+    pub fn to_bool(self) -> Option<bool> {
+        match self {
+            Value::Integer(i) => Some(i != 0),
+            _ => None,
         }
     }
 
@@ -169,6 +176,12 @@ impl Variable for ConstVal {
     }
 }
 
+mod arithmetic_impl {
+
+use std::ops::{Add, Sub, Mul, Div};
+
+use super::Value;
+
 // use proc macro
 
 impl Add for Value {
@@ -226,4 +239,6 @@ impl Div for Value {
             (v1, v2) => Value::Error(format!("cannot div {v1:?} and {v2:?}")),
         }
     }
+}
+
 }
