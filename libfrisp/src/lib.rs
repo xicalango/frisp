@@ -74,10 +74,20 @@ mod test {
     #[test]
     fn test_gcd() {
         let mut env = Environment::with_default_content();
-        let fib_code = include_str!("../../res/gcd.lisp");
+        let gcd_code = include_str!("../../res/gcd.lisp");
 
-        assert_eq!(Value::Unit, run_with_env(fib_code, &mut env).unwrap());
+        assert_eq!(Value::Unit, run_with_env(gcd_code, &mut env).unwrap());
         assert_eq!(Value::int(3isize), run_with_env(&format!("(gcd 1098 1173)"), &mut env).unwrap());
+    }
+
+    #[test]
+    fn test_include() {
+        let mut env = Environment::with_default_content();
+
+        assert_eq!(Value::Unit, run_with_env(&format!("(include \"../res/include_test.lisp\")"), &mut env).unwrap());
+        assert_eq!(Value::Integer(2), run_with_env("a", &mut env).unwrap());
+        assert_eq!(Value::Integer(3), run_with_env("b", &mut env).unwrap());
+        assert_eq!(Value::Integer(5), run_with_env("c", &mut env).unwrap());
     }
 
 }

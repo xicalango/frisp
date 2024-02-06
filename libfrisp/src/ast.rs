@@ -97,7 +97,6 @@ where I: Iterator<Item = char> {
                             pl.push(AstNode::List(list));
                             current_list = Some(pl);
                         },
-                        // TODO this will end at the first occurrence of a complete expression
                         None => return Some(Ok(AstNode::List(list)))
                     }
                 },
