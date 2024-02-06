@@ -6,6 +6,7 @@ pub mod arithmetic;
 pub mod list;
 pub mod misc;
 pub mod io;
+pub mod logical;
 
 pub trait Env {
     fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>>;
@@ -41,6 +42,11 @@ impl<'a> Environment<'a> {
         env.insert_var("mod", arithmetic::Mod);
         env.insert_var("==", arithmetic::Eq);
         env.insert_var("<", arithmetic::Lt);
+        env.insert_var(">", arithmetic::Gt);
+
+        env.insert_var("not", logical::Not);
+        env.insert_var("or", logical::Or);
+        env.insert_var("and", logical::And);
 
         env.insert_var("pi", ConstVal::from(Value::Float(std::f64::consts::PI)));
         

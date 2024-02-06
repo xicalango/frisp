@@ -88,7 +88,7 @@ impl Variable for Gt {
         }
         match (&args[0], &args[1]) {
             (Value::Integer(v1), Value::Integer(v2)) => Ok(Value::bool(v1 > v2)),
-            e => Err(Error::VarEvalError(format!("cannot lt {e:?}")))
+            e => Err(Error::VarEvalError(format!("cannot gt {e:?}")))
         }
     }
 }
