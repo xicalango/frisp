@@ -1,5 +1,5 @@
 
-use std::io::stdin;
+use std::{io::stdin, process::Command};
 
 use crate::{value::{Variable, Value}, Error};
 
@@ -48,5 +48,25 @@ impl Variable for ParseInt {
             v@Value::Integer(_) => Ok(v.clone()), // TODO probably possible without cloning...
             e => Err(Error::VarEvalError(format!("cannot evaluate {e:?} to int")))
         }        
+    }
+}
+
+pub struct System;
+
+impl Variable for System {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        if args.len() != 1 {
+            return Err(Error::VarEvalArgNumError { expected: 1, actual: args.len() });
+        }
+
+        if let Value::String(cmd) = &args[0] {
+            let mut command = Command::new("sh");
+            command.arg("-c").arg(cmd);
+            let output = command.output().map_err(|e| Error::VarEvalError(format!("problem executing {cmd}: {e}")))?;
+            let val = String::from_utf8_lossy(&output.stdout);
+            return Ok(Value::String(val.trim_end().to_string()));
+        } else {
+            return Err(Error::VarEvalError(format!("not a string: {:?}", &args[0])))
+        }
     }
 }
