@@ -102,6 +102,7 @@ impl Variable for Endp {
 
         match &args[0] {
             Value::List(list) => Ok(Value::bool(list.is_empty())),
+            Value::Unit => Ok(Value::bool(true)),
             v => Err(Error::VarEvalError(format!("not a list: {v:?}"))),
         } 
     }

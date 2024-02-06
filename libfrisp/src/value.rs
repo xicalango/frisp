@@ -1,7 +1,22 @@
 
-use std::fmt::Display;
+use std::{fmt::Display, rc::Rc};
 
 use crate::{ast::AstNode, env::{Env, Environment}, Error};
+
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Lambda {
+    vars: Vec<String>,
+    body: Vec<AstNode>,
+}
+
+impl Lambda {
+
+    pub fn new(args: Vec<String>, body: Vec<AstNode>) -> Lambda {
+        Lambda { vars: args, body }
+    }
+    
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -10,7 +25,7 @@ pub enum Value {
     Integer(isize),
     Float(f64),
     List(Vec<Value>),
-    Lambda(Vec<String>, Vec<AstNode>),
+    Lambda(Rc<Lambda>),
     SymbolRef(String),
     Error(String),
 }
@@ -56,10 +71,10 @@ impl Value {
     }
 
     pub fn to_list(self) -> Option<Vec<Value>> {
-        if let Value::List(list) = self {
-            Some(list)
-        } else {
-            None
+        match self {
+            Value::List(list) => Some(list),
+            Value::Unit => Some(Vec::new()),
+            _ => None,
         }
     }
 
@@ -92,8 +107,8 @@ impl Display for Value {
                 let s: Vec<_> = v.iter().map(|vv| vv.to_string()).collect();
                 write!(f, "({})", s.join(","))
             },
-            Value::Lambda(args, body) => {
-                write!(f, "(lambda {args:?} {body:?})")
+            Value::Lambda(lambda) => {
+                write!(f, "(lambda {:?} {:?})", &lambda.vars, &lambda.body)
             },
             Value::SymbolRef(v) => write!(f, "@{v}"),
             Value::Error(e) => write!(f, "Value Error: {e}"),
@@ -106,6 +121,34 @@ pub trait Variable {
 
     fn val(&self) -> Option<Value> {
         None
+    }
+}
+
+impl Variable for Lambda {
+    fn eval(&self, env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        let vars = &self.vars;
+        if vars.len() != args.len() {
+            return Err(Error::VarEvalArgNumError { expected: vars.len(), actual: args.len() });
+        }
+        let mut local_env = env.local_env();
+
+        #[cfg(feature = "log")]
+        println!("created local_env#{:p} from env#{env:p}", &local_env);
+
+        for (name, value) in vars.iter().zip(args.into_iter()) {
+            #[cfg(feature = "log")]
+            println!("local env setting {name} to {value}");
+            local_env.insert_var(name.clone(), ConstVal(value));
+        }
+
+        let mut last_value = None;
+
+        for stmt in &self.body {
+            last_value = Some(stmt.eval(&mut local_env)
+                .map_err(|e| Error::VarEvalError(format!("eval error: {e}")))?)
+        }
+        
+        last_value.ok_or(Error::VarEvalError(format!("no value")))
     }
 }
 
@@ -130,31 +173,12 @@ impl Variable for ConstVal {
         let ConstVal(v) = self;
 
         match v {
-            Value::Lambda(vars, body) => {
-                if vars.len() != args.len() {
-                    return Err(Error::VarEvalArgNumError { expected: vars.len(), actual: args.len() });
-                }
-                let mut local_env = env.local_env();
-
-                #[cfg(feature = "log")]
-                println!("created local_env#{:p} from env#{env:p}", &local_env);
-
-                for (name, value) in vars.iter().zip(args.into_iter()) {
-                    #[cfg(feature = "log")]
-                    println!("local env setting {name} to {value}");
-                    local_env.insert_var(name.clone(), ConstVal(value));
-                }
-
-                let mut last_value = None;
-
-                for stmt in body {
-                    last_value = Some(stmt.eval(&mut local_env)
-                        .map_err(|e| Error::VarEvalError(format!("eval error: {e}")))?)
-                }
-                
-                last_value.ok_or(Error::VarEvalError(format!("no value")))
+            Value::Lambda(lambda) => {
+                lambda.eval(env, args)
             }
             Value::SymbolRef(sym) => {
+                #[cfg(feature = "log")]
+                println!("getting symbol ref {sym}");
                 let var = env.get_var(&sym)
                     .ok_or(Error::VarEvalError(format!("unknown symbol: {sym}")))?;
                 var.eval(env, args)
@@ -163,6 +187,8 @@ impl Variable for ConstVal {
                 if !args.is_empty() {
                     Err(Error::VarEvalArgNumError { expected: 0, actual: args.len() })
                 } else {
+                    #[cfg(feature = "log")]
+                    println!("getting value {v:?}");
                     Ok(v.clone())
                 }
             }
@@ -172,6 +198,8 @@ impl Variable for ConstVal {
     fn val(&self) -> Option<Value> {
         let ConstVal(v) = self;
 
+        #[cfg(feature = "log")]
+        println!("val access to {v:?}");
         Some(v.clone())
     }
 }

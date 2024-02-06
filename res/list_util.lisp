@@ -7,7 +7,7 @@
 
 (define reverse (lambda (l)
   (if (endp l)
-    (list)
+    ()
     (concatenate (reverse (cdr l)) (list (car l)))
   )
 ))
@@ -28,14 +28,14 @@
 
 (define seq (lambda (n)
   (if (== n 0)
-    (list)
+    ()
     (cons n (seq (- n 1)))
   )
 ))
 
 (define map (lambda (mapper l)
     (if (endp l)
-        (list)
+        ()
         (cons (mapper (car l)) (map mapper (cdr l)))
     )
 ))

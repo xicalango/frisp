@@ -1,7 +1,7 @@
 
-use std::fmt::Debug;
+use std::{fmt::Debug, rc::Rc};
 
-use crate::{env::{Env, Environment}, token::{Token, TokenStream}, value::{ConstVal, Value}, Error};
+use crate::{env::{Env, Environment}, token::{Token, TokenStream}, value::{ConstVal, Lambda, Value}, Error};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstNode {
@@ -182,7 +182,7 @@ impl AstNode {
 
                                 let args = args?;
 
-                                return Ok(Value::Lambda(args, body));
+                                return Ok(Value::Lambda(Rc::new(Lambda::new(args, body))));
                             },
                             "progn" => {
                                 let mut last_value = None;
