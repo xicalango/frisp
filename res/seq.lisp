@@ -1,6 +1,0 @@
-(define seq (lambda (n)
-  (if (== n 0)
-    (list)
-    (cons n (seq (- n 1)))
-  )
-))

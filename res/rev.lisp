@@ -1,6 +1,0 @@
-(define reverse (lambda (l)
-  (if (endp l)
-    (list)
-    (concatenate (reverse (cdr l)) (list (car l)))
-  )
-))

@@ -1,6 +1,0 @@
-(define concatenate (lambda (l1 l2)
-  (if (endp l1)
-    (l2)
-    (cons (car l1) (concatenate (cdr l1) l2))
-  )
-))
