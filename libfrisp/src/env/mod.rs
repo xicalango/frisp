@@ -7,6 +7,7 @@ pub mod list;
 pub mod misc;
 pub mod io;
 pub mod logical;
+pub mod string;
 
 pub trait Env {
     fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>>;
@@ -66,6 +67,12 @@ impl<'a> Environment<'a> {
         env.insert_var("print", io::Print);
         env.insert_var("parseInt", io::ParseInt);
         env.insert_var("system", io::System);
+
+        env.insert_var("str-split", string::Split);
+        env.insert_var("str-lines", string::Lines);
+        env.insert_var("str-concat", string::Concat);
+        env.insert_var("str-join", string::Join);
+        env.insert_var("to-string", string::ToString);
 
         env.insert_var("debug", misc::DebugPrint);
         
