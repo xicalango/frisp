@@ -1,5 +1,5 @@
 
-use std::{fmt::Debug, fs::read_to_string};
+use std::fmt::Debug;
 
 use crate::{env::{Env, Environment}, token::{Token, TokenStream}, value::{ConstVal, Value}, Error};
 
@@ -209,10 +209,7 @@ impl AstNode {
                         let path_val = path.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
                         let path_str = path_val.as_str().ok_or(Error::EvalError(format!("{path_val:?} is not a string")))?;
 
-                        let file_contents = read_to_string(path_str).map_err(|e| Error::EvalError(format!("Error when reading from file {path_str:?}: {e}")))?;
-
-                        crate::run_with_env(&file_contents, env)?;
-                        Ok(Value::Unit)
+                        crate::eval_file_with_env(path_str, env)
                     },
                     Some(AstNode::Symbol(s)) => {
                         let mut args: Vec<Value> = Vec::new();

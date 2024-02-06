@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, fs::read_to_string, path::Path};
 
 use ast::AstNodeStream;
 use env::Environment;
@@ -39,8 +39,7 @@ impl std::error::Error for Error {
 }
 
 pub fn run(script: &str) -> Result<Value, Error> {
-    let mut env = Environment::with_default_content();
-    run_with_env(script, &mut env)
+    run_with_env(script, &mut Environment::with_default_content())
 }
 
 pub fn run_with_env(script: &str, env: &mut Environment) -> Result<Value, Error> {
@@ -55,6 +54,15 @@ pub fn run_with_env(script: &str, env: &mut Environment) -> Result<Value, Error>
     }
     
     Ok(last_value.unwrap_or_default())
+}
+
+pub fn eval_file<P: AsRef<Path>>(path: P) -> Result<Value, Error> {
+    eval_file_with_env(path, &mut Environment::with_default_content())
+}
+
+pub fn eval_file_with_env<P: AsRef<Path>>(path: P, env: &mut Environment) -> Result<Value, Error> {
+    let file_contents = read_to_string(path.as_ref()).map_err(|e| Error::EvalError(format!("Error when reading from file {:?}: {e}", path.as_ref())))?;
+    run_with_env(&file_contents, env)
 }
 
 #[cfg(test)]
