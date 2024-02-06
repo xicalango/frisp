@@ -40,3 +40,12 @@
     )
 ))
 
+(define for-each (lambda (body l)
+    (if (endp l)
+        ()
+        (progn
+            (body (car l))
+            (for-each body (cdr l))
+        )
+    )
+))

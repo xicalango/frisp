@@ -182,6 +182,15 @@ impl AstNode {
 
                         return Ok(Value::Lambda(args, body));
                     },
+                    Some(AstNode::Symbol(s)) if s == "progn" => {
+                        let mut last_value = None;
+
+                        for stmt in &l[1..] {
+                            last_value = Some(stmt.eval(env)?)
+                        }
+                        
+                        last_value.ok_or(Error::VarEvalError(format!("no value")))
+                    },
                     #[cfg(feature = "eval")]
                     Some(AstNode::Symbol(s)) if s == "eval" => {
                         let script = l.get(1).ok_or(Error::EvalError(format!("no args for eval")))?;
@@ -217,6 +226,9 @@ impl AstNode {
                         #[cfg(feature = "log")]
                         println!("evaluated {s} to {value:?}");
                         value
+                    }
+                    None => {
+                        Ok(Value::Unit)
                     }
                     _ => {
                         return Err(Error::EvalError(format!("invalid at this point in time: {l:?}")))
