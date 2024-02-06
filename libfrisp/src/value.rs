@@ -1,5 +1,5 @@
 
-use std::fmt::Display;
+use std::{fmt::Display, ops::{Add, Div, Mul, Sub}};
 
 use crate::{ast::AstNode, env::{Env, Environment}, Error};
 
@@ -12,6 +12,7 @@ pub enum Value {
     List(Vec<Value>),
     Lambda(Vec<String>, Vec<AstNode>),
     SymbolRef(String),
+    Error(String),
 }
 
 impl Default for Value {
@@ -62,6 +63,14 @@ impl Value {
         }
     }
 
+    pub fn unwrap_err(self) -> Result<Value, Error> {
+        if let Value::Error(e) = self {
+            Err(Error::VarEvalError(e))
+        } else {
+            Ok(self)
+        }
+    }
+
 }
 
 
@@ -80,6 +89,7 @@ impl Display for Value {
                 write!(f, "(lambda {args:?} {body:?})")
             },
             Value::SymbolRef(v) => write!(f, "@{v}"),
+            Value::Error(e) => write!(f, "Value Error: {e}"),
         }
     }
 }
@@ -156,5 +166,64 @@ impl Variable for ConstVal {
         let ConstVal(v) = self;
 
         Some(v.clone())
+    }
+}
+
+// use proc macro
+
+impl Add for Value {
+    type Output = Value;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 + v2),
+            (Value::Integer(v1), Value::Float(v2)) => Value::Float(v1 as f64 + v2),
+            (Value::Float(v1), Value::Integer(v2)) => Value::Float(v1 + v2 as f64),
+            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 + v2),
+            (v1, v2) => Value::Error(format!("Cannot add {v1:?} and {v2:?}")),
+        }
+    }
+
+}
+
+impl Sub for Value {
+    type Output = Value;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 - v2),
+            (Value::Integer(v1), Value::Float(v2)) => Value::Float(v1 as f64 - v2),
+            (Value::Float(v1), Value::Integer(v2)) => Value::Float(v1 - v2 as f64),
+            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 - v2),
+            (v1, v2) => Value::Error(format!("cannot sub {v1:?} and {v2:?}")),
+        }
+    }
+}
+
+impl Mul for Value {
+    type Output = Value;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 * v2),
+            (Value::Integer(v1), Value::Float(v2)) => Value::Float(v1 as f64 * v2),
+            (Value::Float(v1), Value::Integer(v2)) => Value::Float(v1 * v2 as f64),
+            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 * v2),
+            (v1, v2) => Value::Error(format!("cannot mul {v1:?} and {v2:?}")),
+        }
+    }
+}
+
+impl Div for Value {
+    type Output = Value;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Integer(v1), Value::Integer(v2)) => Value::Integer(v1 / v2),
+            (Value::Integer(v1), Value::Float(v2)) => Value::Float(v1 as f64 / v2),
+            (Value::Float(v1), Value::Integer(v2)) => Value::Float(v1 / v2 as f64),
+            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 / v2),
+            (v1, v2) => Value::Error(format!("cannot div {v1:?} and {v2:?}")),
+        }
     }
 }
