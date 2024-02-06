@@ -52,8 +52,6 @@ fn run_frisp_tests() {
             continue;
         }
 
-        println!("test file {file_name}");
-
         let mut test_env = env.sub_env();
 
         crate::eval_file_with_env(entry.path(), &mut test_env).unwrap();
@@ -64,7 +62,7 @@ fn run_frisp_tests() {
                                     .collect();
 
         for test in tests {
-            println!("running {test}");
+            println!("running {file_name}/{test}");
             if let Err(e) = crate::run_with_env(&format!("({test})"), &mut test_env) {
                 panic!("test {file_name}/{test} failed: {e}")
             }
