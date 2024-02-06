@@ -12,6 +12,10 @@ pub trait Env {
     fn get_var(&self, name: &str) -> Option<&Rc<dyn Variable>>;
 
     fn insert_var(&mut self, name: impl ToString, var: impl Variable + 'static);
+
+    fn local_vars(&self) -> Vec<&String>;
+
+    fn all_vars(&self) -> Vec<&String>;
 }
 
 #[derive(Clone)]
@@ -72,7 +76,8 @@ impl<'a> Environment<'a> {
     }
 
     pub fn local_env(&'a self) -> Environment<'a> {
-        Environment { env: Default::default(), parent_env: self.parent_env.or_else(|| Some(self)) }
+        // TODO think about how this should work really
+        self.sub_env()
     }
 
 }
@@ -88,6 +93,21 @@ impl<'a> Env for Environment<'a> {
 
     fn insert_var(&mut self, name: impl ToString, var: impl Variable + 'static) {
         self.env.insert(name.to_string(), Rc::new(var));
+    }
+
+    fn local_vars(&self) -> Vec<&String> {
+        self.env.keys().collect()        
+    }
+
+    fn all_vars(&self) -> Vec<&String> {
+        match self.parent_env {
+            Some(pe) => {
+                let mut vars = self.local_vars();
+                vars.append(&mut pe.all_vars());
+                vars
+            },
+            None => self.local_vars(),
+        }
     }
 }
 
