@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use ast::AstNode;
+use ast::AstNodeStream;
 use env::Environment;
 use token::TokenStream;
 use value::Value;
@@ -45,9 +45,16 @@ pub fn run(script: &str) -> Result<Value, Error> {
 
 pub fn run_with_env(script: &str, env: &mut Environment) -> Result<Value, Error> {
     let tokens = TokenStream::new(script.chars());
+    let ast_nodes = AstNodeStream::new(tokens);
 
-    let ast_node = AstNode::try_from(tokens)?;
-    ast_node.eval(env)
+    let mut last_value = None;
+
+    for ast_node in ast_nodes {
+        let ast_node = ast_node?;
+        last_value = Some(ast_node.eval(env)?);
+    }
+    
+    Ok(last_value.unwrap_or_default())
 }
 
 #[cfg(test)]

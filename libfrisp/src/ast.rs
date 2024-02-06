@@ -1,5 +1,5 @@
 
-use std::fs::read_to_string;
+use std::{fmt::Debug, fs::read_to_string};
 
 use crate::{env::{Env, Environment}, token::{Token, TokenStream}, value::{ConstVal, Value}, Error};
 
@@ -52,15 +52,32 @@ impl Default for AstNode {
     }
 }
 
-impl<I> TryFrom<TokenStream<I>> for AstNode 
-where I: Iterator<Item = char> {
-    type Error = Error;
+pub struct AstNodeStream<I> {
+    token_stream: TokenStream<I>,
+}
 
-    fn try_from(mut value: TokenStream<I>) -> Result<Self, Self::Error> {
+impl<I> AstNodeStream<I> {
+    pub fn new(token_stream: TokenStream<I>) -> AstNodeStream<I> {
+        AstNodeStream { token_stream }
+    }
+}
+
+impl<I> Debug for AstNodeStream<I> 
+where I: Debug + Iterator<Item = char> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AstNodeStream").field("token_stream", &self.token_stream).finish()
+    }
+}
+
+impl<I> Iterator for AstNodeStream<I> 
+where I: Iterator<Item = char> {
+    type Item = Result<AstNode, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
         let mut lists = Vec::new();
         let mut current_list: Option<Vec<AstNode>> = None;
 
-        while let Some(t) = value.next() {
+        while let Some(t) = self.token_stream.next() {
             match t {
                 Token::ListStart => {
                     if let Some(l) = current_list.take() {
@@ -69,7 +86,11 @@ where I: Iterator<Item = char> {
                     current_list = Some(Vec::new());
                 },
                 Token::ListEnd => {
-                    let list = current_list.take().ok_or(Error::ParserError("list end without current list".to_string()))?;
+                    let list = current_list.take().ok_or(Error::ParserError("list end without current list".to_string()));
+                    if let Err(e) = list {
+                        return Some(Err(e))
+                    }
+                    let list = list.unwrap();
                     let parent_list = lists.pop();
                     match parent_list {
                         Some(mut pl) => {
@@ -77,7 +98,7 @@ where I: Iterator<Item = char> {
                             current_list = Some(pl);
                         },
                         // TODO this will end at the first occurrence of a complete expression
-                        None => return Ok(AstNode::List(list))
+                        None => return Some(Ok(AstNode::List(list)))
                     }
                 },
                 Token::Symbol(s) => {
@@ -85,7 +106,7 @@ where I: Iterator<Item = char> {
                     if let Some(l) = current_list.as_mut() {
                         l.push(value);
                     } else {
-                        return Ok(value);
+                        return Some(Ok(value));
                     }
                 },
                 Token::String(s) => {
@@ -93,17 +114,23 @@ where I: Iterator<Item = char> {
                     if let Some(l) = current_list.as_mut() {
                         l.push(value);
                     } else {
-                        return Ok(value);
+                        return Some(Ok(value));
                     }
                 },
                 Token::Error(e) => {
-                    return Err(Error::TokenizerError(e));
+                    return Some(Err(Error::TokenizerError(e)));
                 }
             }
         }
 
-        return Err(Error::ParserError("reached end of stream without end of list".to_string()));
+        if current_list.is_none() {
+            return None;
+        } else {
+            return Some(Err(Error::ParserError("reached end of stream without end of list".to_string())));
+        }
+
     }
+
 }
 
 impl AstNode {
@@ -225,17 +252,22 @@ mod tests {
 
         let tokens = TokenStream::new(string.chars());
 
-        let ast: Result<AstNode, Error> = tokens.try_into();
+        let ast_nodes = AstNodeStream::new(tokens);
 
-        println!("{ast:#?}");
+        let nodes: Result<Vec<AstNode>, Error> = ast_nodes.collect();
 
-        let ast = ast.unwrap();
+        println!("{nodes:#?}");
+
+        let nodes = nodes.unwrap();
 
         let mut env = Environment::with_default_content();
 
-        let res = ast.eval(&mut env);
+        for node in nodes {
+            let res = node.eval(&mut env);
+            println!("{res:?}");
+        }
 
-        println!("{res:?}");
+
     }
 
 }
