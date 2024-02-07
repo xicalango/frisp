@@ -45,3 +45,22 @@
     (define actual (nth 5 (seq 10)))
     (assert-eq expected actual)
 ))
+
+(define test-index-of (lambda ()
+    (define l (seq 10))
+    (define val 3)
+    (define res (index-of val l))
+    (assert-eq (nth res l) val)
+))
+
+(define test-find-by-key (lambda () 
+    (define expected (list "needle" 2 3))
+    (define actual (find-by-key "needle" 
+        (list
+            (list "no" 1)
+            (list 3 4 5)
+            (list "needle" 2 3)
+        )
+    ))
+    (assert-eq expected actual)
+))
