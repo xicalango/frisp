@@ -75,6 +75,9 @@ impl<'a> Environment<'a> {
         env.insert_var("to-string", string::ToString);
 
         env.insert_var("debug", misc::DebugPrint);
+        env.insert_var("type-of", misc::TypeOf);
+        env.insert_var("local-env", misc::DumpEnv::<true>);
+        env.insert_var("global-env", misc::DumpEnv::<false>);
         
         env
     }

@@ -116,6 +116,12 @@ impl Display for Value {
     }
 }
 
+impl FromIterator<Value> for Value {
+    fn from_iter<T: IntoIterator<Item = Value>>(iter: T) -> Self {
+        Value::List(iter.into_iter().collect())
+    }
+}
+
 pub trait Variable {
     fn eval(&self, env: &Environment, args: Vec<Value>) -> Result<Value, Error>;
 
