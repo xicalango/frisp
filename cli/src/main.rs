@@ -34,15 +34,19 @@ impl From<libfrisp::Error> for CliError {
     }
 }
 
+/// frisp - a lisp interpreter
 #[derive(Debug, Parser)]
 struct CliArgs {
 
+    /// list of files to evaluate before main script
     #[arg(short, long)]
     include: Vec<String>,
 
+    /// subcommand to run
     #[command(subcommand)]
     command: Option<Commands>,
 
+    /// arguments that get passed to script as `cli-args`
     #[arg(global = true, trailing_var_arg = true)]
     args: Vec<String>,
 
@@ -50,13 +54,18 @@ struct CliArgs {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// run the interactive repl
     Repl,
 
+    /// run a script from a file
     Run {
+        /// path to the script file to execute
         script_path: PathBuf,
     },
 
+    /// execute an immediate script
     Exec {
+        /// script to execute
         script: String,
     },
 }
