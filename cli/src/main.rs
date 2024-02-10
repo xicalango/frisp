@@ -1,14 +1,13 @@
 use std::{error::Error, fmt::Display, io::stdin, path::PathBuf};
 
-use libfrisp::{env::Environment, value::Value};
+use libfrisp::{env::{Env, Environment}, value::{ConstVal, Value}};
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 #[derive(Debug)]
 enum CliError {
     FrispError(libfrisp::Error),
     GenericError(Box<dyn Error>),
-    Quit(isize),
 }
 
 impl CliError {
@@ -36,16 +35,36 @@ impl From<libfrisp::Error> for CliError {
 }
 
 #[derive(Debug, Parser)]
-struct Args {
+struct CliArgs {
 
     #[arg(short, long)]
     include: Vec<String>,
 
-    #[arg(short, long)]
-    cli_script: Option<String>,
+    #[command(subcommand)]
+    command: Option<Commands>,
 
-    script: Option<PathBuf>,
+    #[arg(global = true, trailing_var_arg = true)]
+    args: Vec<String>,
 
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    Repl,
+
+    Run {
+        script_path: PathBuf,
+    },
+
+    Exec {
+        script: String,
+    },
+}
+
+impl Default for Commands {
+    fn default() -> Self {
+        Commands::Repl
+    }
 }
 
 fn run_repl(env: &mut Environment) -> Result<(), CliError> {
@@ -70,7 +89,7 @@ fn run_repl(env: &mut Environment) -> Result<(), CliError> {
 
 fn main() -> Result<(), CliError> {
 
-    let args = Args::parse();
+    let args = CliArgs::parse();
 
     let mut env = Environment::with_default_content();
 
@@ -80,19 +99,13 @@ fn main() -> Result<(), CliError> {
         }
     }
 
-    let has_script = args.cli_script.is_some() || args.script.is_some();
+    env.insert_var("cli-args", ConstVal::from(args.args.iter().map(Value::string).collect::<Value>()));
 
-    if has_script {
-        if let Some(script) = &args.cli_script {
-            libfrisp::run_with_env(script, &mut env)?;
-        }
-
-        if let Some(script_path) = &args.script {
-            libfrisp::eval_file_with_env(script_path, &mut env)?;
-        }
-    } else {
-        run_repl(&mut env)?;
-    }
+    match &args.command.unwrap_or_default() {
+        Commands::Repl => run_repl(&mut env),
+        Commands::Run { script_path } => libfrisp::eval_file_with_env(script_path, &mut env).map(|_| ()).map_err(|e| e.into()),
+        Commands::Exec { script } => libfrisp::run_with_env(script, &mut env).map(|_| ()).map_err(|e| e.into()),
+    }?;
 
     Ok(())
 }
