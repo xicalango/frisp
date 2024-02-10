@@ -41,6 +41,9 @@ struct Args {
     #[arg(short, long)]
     include: Vec<String>,
 
+    #[arg(short, long)]
+    cli_script: Option<String>,
+
     script: Option<PathBuf>,
 
 }
@@ -77,8 +80,16 @@ fn main() -> Result<(), CliError> {
         }
     }
 
-    if let Some(script_path) = &args.script {
-        libfrisp::eval_file_with_env(script_path, &mut env)?;
+    let has_script = args.cli_script.is_some() || args.script.is_some();
+
+    if has_script {
+        if let Some(script) = &args.cli_script {
+            libfrisp::run_with_env(script, &mut env)?;
+        }
+
+        if let Some(script_path) = &args.script {
+            libfrisp::eval_file_with_env(script_path, &mut env)?;
+        }
     } else {
         run_repl(&mut env)?;
     }
