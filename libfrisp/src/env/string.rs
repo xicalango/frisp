@@ -43,19 +43,30 @@ impl Variable for Lines {
 
 pub struct ToString;
 
+impl ToString {
+
+    pub fn value_to_string(value: &Value) -> Result<String, Error> {
+        match value {
+            Value::Unit => Ok("".to_string()),
+            Value::String(s) => Ok(s.to_owned()),
+            Value::Integer(v) => Ok(v.to_string()),
+            Value::Float(v) => Ok(v.to_string()),
+            Value::Error(e) => Ok(format!("Error: {e}")),
+            v => Err(Error::VarEvalError(format!("cannot make into string: {v:?}"))),
+        }
+    }
+
+}
+
 impl Variable for ToString {
     fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
-        if args.len() != 1 {
-            return Err(Error::VarEvalArgNumError { expected: 1, actual: args.len() });
-        }
+        
+        let mut strings = args.iter().map(ToString::value_to_string);
 
-        match &args[0] {
-            Value::Unit => Ok(Value::string("")),
-            Value::String(s) => Ok(Value::string(s)),
-            Value::Integer(v) => Ok(Value::string(v.to_string())),
-            Value::Float(v) => Ok(Value::string(v.to_string())),
-            Value::Error(e) => Ok(Value::string(format!("Error: {e}"))),
-            v => Err(Error::VarEvalError(format!("cannot make into string: {v:?}"))),
+        if strings.len() == 1 {
+            strings.next().unwrap().map(Value::string)
+        } else {
+            strings.map(|e| e.map(Value::string)).collect()
         }
     }
 }
