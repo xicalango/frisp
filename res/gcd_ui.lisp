@@ -1,9 +1,9 @@
 (define gcd-ui (lambda () 
     (print "Please enter first number:")
-    (define a (parseInt (readLine)))
+    (define a (parse-int (read-line)))
 
     (print "Please enter second number:")
-    (define b (parseInt (readLine)))
+    (define b (parse-int (read-line)))
 
     (define res (gcd a b))
 
