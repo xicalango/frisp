@@ -27,5 +27,5 @@ deploy:
     when: on_success
     expire_in: 30 days
     paths:
-      - target/release/cli
+      - target/release/frisp
   
