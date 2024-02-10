@@ -1,5 +1,5 @@
 
-use std::{io::stdin, process::Command};
+use std::{fs::read_to_string, io::stdin, process::Command};
 
 use crate::{value::{Variable, Value}, Error};
 
@@ -59,14 +59,27 @@ impl Variable for System {
             return Err(Error::VarEvalArgNumError { expected: 1, actual: args.len() });
         }
 
-        if let Value::String(cmd) = &args[0] {
-            let mut command = Command::new("sh");
-            command.arg("-c").arg(cmd);
-            let output = command.output().map_err(|e| Error::VarEvalError(format!("problem executing {cmd}: {e}")))?;
-            let val = String::from_utf8_lossy(&output.stdout);
-            return Ok(Value::String(val.trim_end().to_string()));
-        } else {
-            return Err(Error::VarEvalError(format!("not a string: {:?}", &args[0])))
+        let cmd = args[0].require_str()?;
+        let mut command = Command::new("sh");
+        command.arg("-c").arg(cmd);
+        let output = command.output().map_err(|e| Error::VarEvalError(format!("problem executing {cmd}: {e}")))?;
+        let val = String::from_utf8_lossy(&output.stdout);
+        return Ok(Value::String(val.trim_end().to_string()));
+    }
+}
+
+pub struct ReadFile;
+
+impl Variable for ReadFile {
+    fn eval(&self, _env: &Environment, args: Vec<Value>) -> Result<Value, Error> {
+        if args.len() != 1 {
+            return Err(Error::VarEvalArgNumError { expected: 1, actual: args.len() });
         }
+
+        let file_path = args[0].require_str()?;
+
+        let contents = read_to_string(file_path).map_err(|e| Error::VarEvalError(e.to_string()))?;
+        
+        Ok(Value::string(contents))
     }
 }

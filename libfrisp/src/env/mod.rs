@@ -64,6 +64,7 @@ impl<'a> Environment<'a> {
         env.insert_var("endp", list::Endp);
 
         env.insert_var("read-line", io::ReadLine);
+        env.insert_var("read-file", io::ReadFile);
         env.insert_var("print", io::Print);
         env.insert_var("parse-int", io::ParseInt);
         env.insert_var("system", io::System);

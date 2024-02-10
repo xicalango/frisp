@@ -62,12 +62,20 @@ impl Value {
         }
     }
 
+    pub fn require_str(&self) -> Result<&str, Error> {
+        self.as_str().ok_or(Error::VarEvalError(format!("not a string: {self:?}")))
+    }
+
     pub fn as_list(&self) -> Option<&Vec<Value>> {
         if let Value::List(list) = self {
             Some(list)
         } else {
             None
         }
+    }
+
+    pub fn require_list(&self) -> Result<&Vec<Value>, Error> {
+        self.as_list().ok_or(Error::VarEvalError(format!("not a list: {self:?}")))
     }
 
     pub fn to_list(self) -> Option<Vec<Value>> {

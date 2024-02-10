@@ -11,11 +11,9 @@ impl Variable for Split {
             return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
         }
 
-        let string = args[0].as_str()
-            .ok_or(Error::VarEvalError(format!("not a string: {:?}", &args[0])))?;
+        let string = args[0].require_str()?;
 
-        let split = args[1].as_str()
-            .ok_or(Error::VarEvalError(format!("not a string: {:?}", &args[1])))?;
+        let split = args[1].require_str()?;
 
         let parts: Vec<_> = string.split(split).map(|s| Value::string(s)).collect();
 
@@ -31,8 +29,7 @@ impl Variable for Lines {
             return Err(Error::VarEvalArgNumError { expected: 1, actual: args.len() });
         }
 
-        let string = args[0].as_str()
-            .ok_or(Error::VarEvalError(format!("not a string: {:?}", &args[0])))?;
+        let string = args[0].require_str()?;
 
         let parts: Vec<_> = string.lines().map(|s| Value::string(s)).collect();
 
@@ -78,8 +75,7 @@ impl Variable for Concat {
         let mut result = String::new();
 
         for arg in &args {
-            let str = arg.as_str()
-                .ok_or(Error::VarEvalError(format!("not a string: {:?}", &args[0])))?;
+            let str = arg.require_str()?;
             result.push_str(str);
         }
 
@@ -95,14 +91,11 @@ impl Variable for Join {
             return Err(Error::VarEvalArgNumError { expected: 2, actual: args.len() });
         }
 
-        let sep = args[0].as_str()
-            .ok_or(Error::VarEvalError(format!("not a string: {:?}", &args[0])))?;
+        let sep = args[0].require_str()?;
 
-        let list = args[1].as_list()
-            .ok_or(Error::VarEvalError(format!("not a list: {:?}", &args[1])))?;
+        let list = args[1].require_list()?;
 
-        let list: Result<Vec<_>, _> = list.iter().map(|v| v.as_str()
-            .ok_or(Error::VarEvalError(format!("not a string: {:?}", &args[0])))).collect();
+        let list: Result<Vec<_>, _> = list.iter().map(|v| v.require_str()).collect();
         let list = list?;
 
         Ok(Value::String(list.join(sep)))
