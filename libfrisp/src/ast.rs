@@ -134,6 +134,98 @@ where I: Iterator<Item = char> {
 
 impl AstNode {
 
+    fn eval_list(env: &mut Environment, symbol: &str, l: &Vec<AstNode>) -> Result<Value, Error> {
+        match symbol {
+            "if" => {
+                let test = l.get(1).ok_or(Error::EvalError(format!("missing test")))?;
+                let conseq = l.get(2).ok_or(Error::EvalError(format!("missing conseq")))?;
+                let alt = l.get(3).ok_or(Error::EvalError(format!("missing alt")))?;
+
+
+                if test.eval(env)? == Value::Integer(1) {
+                    return conseq.eval(env);
+                } else {
+                    return alt.eval(env);
+                }
+            },
+            "define" => {
+                let symbol = l.get(1).ok_or(Error::EvalError(format!("no symbol for define")))?;
+                let val = l.get(2).ok_or(Error::EvalError(format!("no value for define")))?;
+
+                if let AstNode::Symbol(sym) = symbol {
+                    let value = val.eval(env)?;
+                    #[cfg(feature = "log")]
+                    println!("defined {sym} to be {value:?}");
+                    env.insert_var(sym, ConstVal::from(value));
+                }
+
+
+                return Ok(Value::Unit);
+            },
+            "lambda" => {
+                let args = l.get(1).ok_or(Error::EvalError(format!("no args for lambda")))?;
+                let body: Vec<_> = l[2..].iter().map(|n| n.to_owned()).collect();
+
+                let args = args.to_owned().try_to_list().map_err(|n| Error::EvalError(format!("not a list: {n:?}")))?;
+
+                let args: Result<Vec<String>, Error> = args.into_iter()
+                    .map(|v| v.try_to_symbol()
+                        .map_err(|n| Error::EvalError(format!("not a symbol: {n:?}")))
+                    ).collect();
+
+                let args = args?;
+
+                return Ok(Value::Lambda(Rc::new(Lambda::new(args, body))));
+            },
+            "progn" => {
+                let mut last_value = None;
+
+                for stmt in &l[1..] {
+                    last_value = Some(stmt.eval(env)?)
+                }
+                
+                last_value.ok_or(Error::VarEvalError(format!("no value")))
+            },
+
+            #[cfg(feature = "eval")]
+            "eval" => {
+                let script = l.get(1).ok_or(Error::EvalError(format!("no args for eval")))?;
+                let script_val = script.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
+                let script_str = script_val.as_str().ok_or(Error::EvalError(format!("{script_val:?} is not a string")))?;
+
+                let res = crate::run_with_env(script_str, env)?;
+
+                #[cfg(feature = "log")]
+                println!("evaluated {script_str:?} to {res:?}");
+                Ok(res)
+            },
+
+            #[cfg(feature = "include")]
+            "include" => {
+                let path = l.get(1).ok_or(Error::EvalError(format!("no args for include")))?;
+                let path_val = path.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
+                let path_str = path_val.as_str().ok_or(Error::EvalError(format!("{path_val:?} is not a string")))?;
+
+                crate::eval_file_with_env(path_str, env)
+            },
+
+            s => {
+                let mut args: Vec<Value> = Vec::new();
+
+                for v in &l[1..] {
+                    args.push(v.eval(env)?);
+                }
+
+                let var = env.get_var(s).ok_or(Error::EvalError(format!("proc not found: {s}")))?;
+                let value = var.eval(&env, args);
+                #[cfg(feature = "log")]
+                println!("evaluated {s} to {value:?}");
+                value
+            }
+
+        }
+    }
+
     pub fn eval(&self, env: &mut Environment) -> Result<Value, Error> {
         match self {
             AstNode::List(l) => {
@@ -142,94 +234,7 @@ impl AstNode {
 
                 match l.get(0) {
                     Some(AstNode::Symbol(s)) => {
-                        match s.as_str() {
-                            "if" => {
-                                let test = l.get(1).ok_or(Error::EvalError(format!("missing test")))?;
-                                let conseq = l.get(2).ok_or(Error::EvalError(format!("missing conseq")))?;
-                                let alt = l.get(3).ok_or(Error::EvalError(format!("missing alt")))?;
-
-
-                                if test.eval(env)? == Value::Integer(1) {
-                                    return conseq.eval(env);
-                                } else {
-                                    return alt.eval(env);
-                                }
-                            },
-                            "define" => {
-                                let symbol = l.get(1).ok_or(Error::EvalError(format!("no symbol for define")))?;
-                                let val = l.get(2).ok_or(Error::EvalError(format!("no value for define")))?;
-
-                                if let AstNode::Symbol(sym) = symbol {
-                                    let value = val.eval(env)?;
-                                    #[cfg(feature = "log")]
-                                    println!("defined {sym} to be {value:?}");
-                                    env.insert_var(sym, ConstVal::from(value));
-                                }
-
-
-                                return Ok(Value::Unit);
-                            },
-                            "lambda" => {
-                                let args = l.get(1).ok_or(Error::EvalError(format!("no args for lambda")))?;
-                                let body: Vec<_> = l[2..].iter().map(|n| n.to_owned()).collect();
-
-                                let args = args.to_owned().try_to_list().map_err(|n| Error::EvalError(format!("not a list: {n:?}")))?;
-
-                                let args: Result<Vec<String>, Error> = args.into_iter()
-                                    .map(|v| v.try_to_symbol()
-                                        .map_err(|n| Error::EvalError(format!("not a symbol: {n:?}")))
-                                    ).collect();
-
-                                let args = args?;
-
-                                return Ok(Value::Lambda(Rc::new(Lambda::new(args, body))));
-                            },
-                            "progn" => {
-                                let mut last_value = None;
-
-                                for stmt in &l[1..] {
-                                    last_value = Some(stmt.eval(env)?)
-                                }
-                                
-                                last_value.ok_or(Error::VarEvalError(format!("no value")))
-                            },
-
-                            #[cfg(feature = "eval")]
-                            "eval" => {
-                                let script = l.get(1).ok_or(Error::EvalError(format!("no args for eval")))?;
-                                let script_val = script.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
-                                let script_str = script_val.as_str().ok_or(Error::EvalError(format!("{script_val:?} is not a string")))?;
-
-                                let res = crate::run_with_env(script_str, env)?;
-
-                                #[cfg(feature = "log")]
-                                println!("evaluated {script_str:?} to {res:?}");
-                                Ok(res)
-                            },
-
-                            #[cfg(feature = "include")]
-                            "include" => {
-                                let path = l.get(1).ok_or(Error::EvalError(format!("no args for include")))?;
-                                let path_val = path.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
-                                let path_str = path_val.as_str().ok_or(Error::EvalError(format!("{path_val:?} is not a string")))?;
-
-                                crate::eval_file_with_env(path_str, env)
-                            },
-
-                            s => {
-                                let mut args: Vec<Value> = Vec::new();
-
-                                for v in &l[1..] {
-                                    args.push(v.eval(env)?);
-                                }
-
-                                let var = env.get_var(s).ok_or(Error::EvalError(format!("proc not found: {s}")))?;
-                                let value = var.eval(&env, args);
-                                #[cfg(feature = "log")]
-                                println!("evaluated {s} to {value:?}");
-                                value
-                            }
-                        }
+                        Self::eval_list(env, s, l)
                     },
                     None => {
                         Ok(Value::Unit)
