@@ -134,6 +134,14 @@ where I: Iterator<Item = char> {
 
 impl AstNode {
 
+    fn quote(&self) -> Value {
+        match self {
+            AstNode::List(list) => list.iter().map(|n| n.quote()).collect(),
+            AstNode::Symbol(symbol) => Value::SymbolRef(symbol.to_owned()),
+            AstNode::Value(value) => value.clone(),
+        }
+    } 
+
     fn eval_list(env: &mut Environment, symbol: &str, l: &Vec<AstNode>) -> Result<Value, Error> {
         match symbol {
             "if" => {
@@ -186,7 +194,9 @@ impl AstNode {
                 
                 last_value.ok_or(Error::VarEvalError(format!("no value")))
             },
-
+            "quote" => {
+                Ok(l[1..].iter().map(|v| v.quote()).collect())
+            },
             #[cfg(feature = "eval")]
             "eval" => {
                 let script = l.get(1).ok_or(Error::EvalError(format!("no args for eval")))?;
