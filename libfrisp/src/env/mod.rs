@@ -89,7 +89,7 @@ impl<'a> Environment<'a> {
 
     pub fn local_env(&'a self) -> Environment<'a> {
         // TODO think about how this should work really
-        self.sub_env()
+        self.clone()
     }
 
 }
