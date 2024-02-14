@@ -198,6 +198,21 @@ impl AstNode {
                 let v: Value = l[1..].iter().map(|v| v.quote()).collect();
                 Ok(v.unwrap_single_value_list())
             },
+            "try" => {
+                let mut last_value = None;
+
+                for ast in &l[1..] {
+                    match ast.eval(env) {
+                        Ok(v) => last_value = Some(v),
+                        Err(e) => {
+                            last_value = Some(Value::Error(e.to_string()));
+                            break;
+                        },
+                    }
+                }
+
+                last_value.ok_or(Error::VarEvalError(format!("no value")))
+            },
             #[cfg(feature = "eval")]
             "eval" => {
                 let script = l.get(1).ok_or(Error::EvalError(format!("no args for eval")))?;
