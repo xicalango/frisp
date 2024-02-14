@@ -94,6 +94,17 @@ impl Value {
         }
     }
 
+    pub fn unwrap_single_value_list(self) -> Value {
+        if let Value::List(l) = self {
+            if l.len() == 1 {
+                return l.into_iter().next().unwrap();
+            }
+            return Value::List(l);
+        }
+
+        self
+    }
+
     pub fn to_bool(self) -> Option<bool> {
         match self {
             Value::Integer(i) => Some(i != 0),

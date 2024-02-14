@@ -195,12 +195,13 @@ impl AstNode {
                 last_value.ok_or(Error::VarEvalError(format!("no value")))
             },
             "quote" => {
-                Ok(l[1..].iter().map(|v| v.quote()).collect())
+                let v: Value = l[1..].iter().map(|v| v.quote()).collect();
+                Ok(v.unwrap_single_value_list())
             },
             #[cfg(feature = "eval")]
             "eval" => {
                 let script = l.get(1).ok_or(Error::EvalError(format!("no args for eval")))?;
-                let script_val = script.to_owned().try_to_value().map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
+                let script_val = script.eval(env).map_err(|v| Error::EvalError(format!("{v:?} is not a value")))?;
                 let script_str = script_val.as_str().ok_or(Error::EvalError(format!("{script_val:?} is not a string")))?;
 
                 let res = crate::run_with_env(script_str, env)?;

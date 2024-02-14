@@ -49,6 +49,11 @@ impl ToString {
             Value::Integer(v) => Ok(v.to_string()),
             Value::Float(v) => Ok(v.to_string()),
             Value::Error(e) => Ok(format!("Error: {e}")),
+            Value::SymbolRef(s) => Ok(s.to_string()),
+            Value::List(l) => {
+                let v: Result<Vec<_>, _> = l.iter().map(|v| Self::value_to_string(v)).collect();
+                Ok(format!("({})", v?.join(" ")))
+            },
             v => Err(Error::VarEvalError(format!("cannot make into string: {v:?}"))),
         }
     }
