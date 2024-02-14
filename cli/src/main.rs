@@ -109,6 +109,7 @@ fn main() -> Result<(), CliError> {
     }
 
     env.insert_var("cli-args", ConstVal::from(args.args.iter().map(Value::string).collect::<Value>()));
+    env.insert_var("sys-env", ConstVal::from(std::env::vars().map(|(a, b)| Value::List(vec![Value::string(a), Value::string(b)])).collect::<Value>()));
 
     match &args.command.unwrap_or_default() {
         Commands::Repl => run_repl(&mut env),
