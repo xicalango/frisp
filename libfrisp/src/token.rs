@@ -62,6 +62,13 @@ where I: Iterator<Item = char> {
         while let Some(c) = self.iter.next() {
             match c {
                 w if w.is_whitespace() => continue,
+                '#' => {
+                    while let Some(c) = self.iter.next() {
+                        if c.is_ascii_control() {
+                            break;
+                        }
+                    }
+                }
                 '(' => return Some(Ok(Token::ListStart)),
                 ')' => return Some(Ok(Token::ListEnd)),
                 '"' => {
